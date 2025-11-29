@@ -53,8 +53,8 @@ export default function Signup() {
           required
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400"
         />
-        <p className="text-sm text-gray-500">
-          Admin banna chahanchau bhane Thunder Client use gara
+        <p className="text-sm-bg-gradient-to-r text-black-500">
+                    if you are new signup Account
         </p>
         <button
           type="submit"
