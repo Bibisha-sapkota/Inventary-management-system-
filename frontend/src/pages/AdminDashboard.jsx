@@ -1,213 +1,157 @@
-import { useEffect, useState } from "react";
-import api from "../api/axios";
-import { getUser, clearAuth } from "../utils/auth";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+// ⚠️ FIX: Changed 'logout' to 'clearAuth'
+import { clearAuth } from "../utils/auth"; 
+import api from "../api/axios";
+
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState(null);
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [recentCustomers, setRecentCustomers] = useState([]);
-  const user = getUser();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    api
-      .get("/admin/dashboard")
-      .then((res) => {
-        setStats(res.data.stats);
-        setRecentOrders(res.data.recentOrders || []);
-        setRecentCustomers(res.data.recentCustomers || []);
-      })
-      .catch((err) => console.error(err));
-  }, []);
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get("/auth/profile");
+        setUser(res.data);
+      } catch (error) {
+        console.error("Failed to fetch profile");
+        // If profile fetch fails, clear auth and redirect
+        clearAuth(); 
+        navigate("/login");
+      }
+    };
+    fetchProfile();
+  }, [navigate]);
 
   const handleLogout = () => {
-    clearAuth();
+    // ⚠️ FIX: Called 'clearAuth()' instead of 'logout()'
+    clearAuth(); 
     navigate("/login");
   };
 
+  const barData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Sales ($)',
+        data: [1200, 1900, 3000, 5000, 2000, 3000],
+        backgroundColor: 'rgba(255, 159, 64, 0.6)',
+      },
+    ],
+  };
+
+  const pieData = {
+    labels: ['Fruits', 'Vegetables', 'Dairy', 'Snacks'],
+    datasets: [
+      {
+        data: [12, 19, 3, 5],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.6)',
+          'rgba(54, 162, 235, 0.6)',
+          'rgba(255, 206, 86, 0.6)',
+          'rgba(75, 192, 192, 0.6)',
+        ],
+      },
+    ],
+  };
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100">
+      
       {/* Sidebar */}
-      <div className="w-64 bg-gradient-to-b from-orange-400 to-blue-500 text-white flex flex-col">
-        <div className="p-6 text-center border-b border-white/20">
-          <h2 className="text-2xl font-bold">{user?.name}</h2>
-          <p className="text-sm">{user?.email}</p>
+      <div className="w-64 bg-white shadow-md">
+        <div className="p-6 text-center">
+          <h2 className="text-2xl font-bold text-orange-600">Admin Panel</h2>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-4">
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "dashboard" ? "bg-white/30" : ""
-            }`}
-          >
+        <nav className="mt-6">
+          <button className="w-full text-left py-2.5 px-4 bg-orange-100 text-orange-700 font-semibold border-r-4 border-orange-500">
             Dashboard
           </button>
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "orders" ? "bg-white/30" : ""
-            }`}
-          >
-            Orders
-          </button>
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "products" ? "bg-white/30" : ""
-            }`}
-          >
-            Products
-          </button>
-          <button
-            onClick={() => setActiveTab("customers")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "customers" ? "bg-white/30" : ""
-            }`}
-          >
-            Customers
-          </button>
-          <button
-            onClick={() => setActiveTab("notifications")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "notifications" ? "bg-white/30" : ""
-            }`}
-          >
-            Notifications
-          </button>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
-              activeTab === "profile" ? "bg-white/30" : ""
-            }`}
-          >
-            Profile
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-4 py-2 mt-10 rounded-lg font-semibold bg-red-500 hover:bg-red-600 transition"
-          >
-            Logout
-          </button>
+          <button className="w-full text-left py-2.5 px-4 text-gray-600 hover:bg-gray-50">Manage Products</button>
+          <button className="w-full text-left py-2.5 px-4 text-gray-600 hover:bg-gray-50">Manage Users</button>
+          <button className="w-full text-left py-2.5 px-4 text-gray-600 hover:bg-gray-50">Reports</button>
         </nav>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-8">
-        {activeTab === "dashboard" && (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">
-              Dashboard
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-blue-400 rounded-lg shadow p-6 text-white text-center">
-                <h3 className="text-xl font-semibold">Products</h3>
-                <p className="text-3xl font-bold">{stats?.products ?? "..."}</p>
-              </div>
-              <div className="bg-orange-400 rounded-lg shadow p-6 text-white text-center">
-                <h3 className="text-xl font-semibold">Customers</h3>
-                <p className="text-3xl font-bold">{stats?.customers ?? "..."}</p>
-              </div>
-              <div className="bg-blue-500 rounded-lg shadow p-6 text-white text-center">
-                <h3 className="text-xl font-semibold">Orders</h3>
-                <p className="text-3xl font-bold">{stats?.orders ?? "..."}</p>
-              </div>
-              <div className="bg-red-500 rounded-lg shadow p-6 text-white text-center">
-                <h3 className="text-xl font-semibold">Low Stock</h3>
-                <p className="text-3xl font-bold">{stats?.lowStock ?? "..."}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "orders" && (
-          <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Orders</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <table className="w-full table-auto">
-                <thead>
-                  <tr className="bg-gray-200">
-                    <th className="px-4 py-2">Order ID</th>
-                    <th className="px-4 py-2">Customer</th>
-                    <th className="px-4 py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.length ? (
-                    recentOrders.map((order, index) => (
-                      <tr key={index}>
-                        <td className="border px-4 py-2">{order.id}</td>
-                        <td className="border px-4 py-2">{order.customerName}</td>
-                        <td className="border px-4 py-2">{order.status}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" className="text-center p-4 text-gray-500">
-                        No recent orders
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "products" && (
-          <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Products</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500">Manage your products here.</p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "customers" && (
-          <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Customers</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              {recentCustomers.length ? (
-                <ul className="space-y-2">
-                  {recentCustomers.map((c, index) => (
-                    <li key={index} className="p-3 border rounded-lg flex justify-between">
-                      <span>{c.name}</span>
-                      <span className="text-gray-500">{c.email}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500">No recent customers</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "notifications" && (
-          <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Notifications</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <ul className="list-disc list-inside space-y-2">
-                <li>Stock for Item A is low</li>
-                <li>Discount on Item B expires tomorrow</li>
-                <li>New order received</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "profile" && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">Profile</h2>
-            <p className="mb-2">Name: {user?.name}</p>
-            <p className="mb-2">Email: {user?.email}</p>
-            <p className="mb-2">Role: {user?.role}</p>
-            <button className="mt-3 bg-gradient-to-r from-orange-400 to-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-orange-500 hover:to-blue-600 transition">
-              Edit Profile
+      <div className="flex-1 overflow-y-auto">
+        <header className="bg-white shadow p-4 flex justify-between items-center">
+          <h1 className="text-xl font-semibold text-gray-800">Overview</h1>
+          <div className="flex items-center gap-4">
+            <span className="font-medium text-gray-600">Welcome, {user?.name}</span>
+            <button 
+              onClick={handleLogout}
+              className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+            >
+              Logout
             </button>
           </div>
-        )}
+        </header>
+
+        <main className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+              <h3 className="text-gray-500">Total Users</h3>
+              <p className="text-2xl font-bold">1,240</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+              <h3 className="text-gray-500">Total Sales</h3>
+              <p className="text-2xl font-bold">$45,200</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
+              <h3 className="text-gray-500">Orders</h3>
+              <p className="text-2xl font-bold">340</p>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+              <h3 className="text-gray-500">Low Stock</h3>
+              <p className="text-2xl font-bold">12</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4 text-gray-700">Monthly Sales</h3>
+              <div className="h-64">
+                <Bar data={barData} options={{ maintainAspectRatio: false }} />
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-4 text-gray-700">Category Distribution</h3>
+              <div className="h-64 flex justify-center">
+                 <div className="w-64">
+                    <Pie data={pieData} />
+                 </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
