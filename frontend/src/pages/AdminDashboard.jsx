@@ -2,6 +2,19 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { getUser, clearAuth } from "../utils/auth";
 import { useNavigate } from "react-router-dom";
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -10,6 +23,89 @@ export default function AdminDashboard() {
   const user = getUser();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  // ⭐ Notification categories
+  const [notifications, setNotifications] = useState({
+    product: [],
+    order: [],
+    discount: [],
+    system: [],
+  });
+
+  const chartData = {
+  labels: ['Products', 'Customers', 'Orders', 'Low Stock'],
+  datasets: [
+    {
+      label: 'Statistics',
+      data: [
+        stats?.products ?? 0,
+        stats?.customers ?? 0,
+        stats?.orders ?? 0,
+        stats?.lowStock ?? 0,
+      ],
+      backgroundColor: ['#3B82F6', '#F59E0B', '#2563EB', '#EF4444'],
+    },
+  ],
+};
+
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: 'top',
+    },
+    title: {
+      display: true,
+      text: 'Dashboard Overview',
+      font: {
+        size: 18,
+      },
+    },
+  },
+};
+<div className="bg-white rounded-lg shadow p-6 mt-6">
+  <Bar data={chartData} options={chartOptions} />
+</div>
+
+
+  // --- Add Notification Handlers ---
+  const addProductNotification = (message) => {
+    setNotifications((prev) => ({
+      ...prev,
+      product: [...prev.product, message],
+    }));
+  };
+
+  const addOrderNotification = (message) => {
+    setNotifications((prev) => ({
+      ...prev,
+      order: [...prev.order, message],
+    }));
+  };
+
+  const addDiscountNotification = (message) => {
+    setNotifications((prev) => ({
+      ...prev,
+      discount: [...prev.discount, message],
+    }));
+  };
+
+  const addSystemNotification = (message) => {
+    setNotifications((prev) => ({
+      ...prev,
+      system: [...prev.system, message],
+    }));
+  };
+
+  // DEMO notifications (you can remove)
+  useEffect(() => {
+    addProductNotification("New product added successfully!");
+    addProductNotification("A product has been deleted!");
+    addOrderNotification("A new order has been placed!");
+    addDiscountNotification("Discount applied on Item B!");
+  }, []);
+
+  // ----------------------------------------------------------
 
   useEffect(() => {
     api
@@ -29,6 +125,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
+      
       {/* Sidebar */}
       <div className="w-64 bg-gradient-to-b from-orange-400 to-blue-500 text-white flex flex-col">
         <div className="p-6 text-center border-b border-white/20">
@@ -44,6 +141,7 @@ export default function AdminDashboard() {
           >
             Dashboard
           </button>
+
           <button
             onClick={() => setActiveTab("orders")}
             className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
@@ -52,6 +150,7 @@ export default function AdminDashboard() {
           >
             Orders
           </button>
+
           <button
             onClick={() => setActiveTab("products")}
             className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
@@ -60,6 +159,7 @@ export default function AdminDashboard() {
           >
             Products
           </button>
+
           <button
             onClick={() => setActiveTab("customers")}
             className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
@@ -68,6 +168,7 @@ export default function AdminDashboard() {
           >
             Customers
           </button>
+
           <button
             onClick={() => setActiveTab("notifications")}
             className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
@@ -76,6 +177,7 @@ export default function AdminDashboard() {
           >
             Notifications
           </button>
+
           <button
             onClick={() => setActiveTab("profile")}
             className={`w-full text-left px-4 py-2 rounded-lg font-semibold hover:bg-white/20 transition ${
@@ -84,6 +186,7 @@ export default function AdminDashboard() {
           >
             Profile
           </button>
+
           <button
             onClick={handleLogout}
             className="w-full text-left px-4 py-2 mt-10 rounded-lg font-semibold bg-red-500 hover:bg-red-600 transition"
@@ -93,13 +196,14 @@ export default function AdminDashboard() {
         </nav>
       </div>
 
-      {/* Main Content */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 p-8">
+
+        {/* Dashboard */}
         {activeTab === "dashboard" && (
           <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">
-              Dashboard
-            </h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-blue-400 rounded-lg shadow p-6 text-white text-center">
                 <h3 className="text-xl font-semibold">Products</h3>
@@ -121,6 +225,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Orders */}
         {activeTab === "orders" && (
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Orders</h2>
@@ -138,7 +243,9 @@ export default function AdminDashboard() {
                     recentOrders.map((order, index) => (
                       <tr key={index}>
                         <td className="border px-4 py-2">{order.id}</td>
-                        <td className="border px-4 py-2">{order.customerName}</td>
+                        <td className="border px-4 py-2">
+                          {order.customerName}
+                        </td>
                         <td className="border px-4 py-2">{order.status}</td>
                       </tr>
                     ))
@@ -155,6 +262,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Products */}
         {activeTab === "products" && (
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Products</h2>
@@ -164,6 +272,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Customers */}
         {activeTab === "customers" && (
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Customers</h2>
@@ -171,7 +280,10 @@ export default function AdminDashboard() {
               {recentCustomers.length ? (
                 <ul className="space-y-2">
                   {recentCustomers.map((c, index) => (
-                    <li key={index} className="p-3 border rounded-lg flex justify-between">
+                    <li
+                      key={index}
+                      className="p-3 border rounded-lg flex justify-between"
+                    >
                       <span>{c.name}</span>
                       <span className="text-gray-500">{c.email}</span>
                     </li>
@@ -184,19 +296,86 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* ⭐ Notifications Tab */}
         {activeTab === "notifications" && (
           <div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-6">Notifications</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <ul className="list-disc list-inside space-y-2">
-                <li>Stock for Item A is low</li>
-                <li>Discount on Item B expires tomorrow</li>
-                <li>New order received</li>
-              </ul>
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+              Notifications
+            </h2>
+
+            <div className="bg-white rounded-lg shadow p-6 space-y-4">
+
+              {/* Product Notifications */}
+              <div>
+                <h3 className="text-xl font-semibold text-blue-600">
+                  Product Notifications
+                </h3>
+                <ul className="list-disc list-inside">
+                  {notifications.product.length ? (
+                    notifications.product.map((msg, i) => (
+                      <li key={i}>{msg}</li>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No product notifications</p>
+                  )}
+                </ul>
+              </div>
+
+              {/* Order Notifications */}
+              <div>
+                <h3 className="text-xl font-semibold text-green-600">
+                  Order Notifications
+                </h3>
+                <ul className="list-disc list-inside">
+                  {notifications.order.length ? (
+                    notifications.order.map((msg, i) => (
+                      <li key={i}>{msg}</li>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No order notifications</p>
+                  )}
+                </ul>
+              </div>
+
+              {/* Discount Notifications */}
+              <div>
+                <h3 className="text-xl font-semibold text-orange-600">
+                  Discount Notifications
+                </h3>
+                <ul className="list-disc list-inside">
+                  {notifications.discount.length ? (
+                    notifications.discount.map((msg, i) => (
+                      <li key={i}>{msg}</li>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">
+                      No discount notifications
+                    </p>
+                  )}
+                </ul>
+              </div>
+
+              {/* System Notifications */}
+              <div>
+                <h3 className="text-xl font-semibold text-red-600">
+                  System Alerts
+                </h3>
+                <ul className="list-disc list-inside">
+                  {notifications.system.length ? (
+                    notifications.system.map((msg, i) => (
+                      <li key={i}>{msg}</li>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No system alerts</p>
+                  )}
+                </ul>
+              </div>
+
             </div>
           </div>
         )}
 
+        {/* Profile */}
         {activeTab === "profile" && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-3xl font-bold text-gray-800 mb-4">Profile</h2>
@@ -208,6 +387,7 @@ export default function AdminDashboard() {
             </button>
           </div>
         )}
+
       </div>
     </div>
   );
