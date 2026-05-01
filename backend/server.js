@@ -21,6 +21,7 @@ const historyRoutes = require('./routes/historyRoutes');
 const exchangeRoutes = require('./routes/exchangeRoutes');
 const openaiRoutes = require('./routes/openaiRoutes');
 const inquiryRoutes = require('./routes/inquiryRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/history', historyRoutes);
 app.use('/api/exchanges', exchangeRoutes);
 app.use('/api/chat', openaiRoutes);
 app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health Check
 app.get('/', (req, res) => {

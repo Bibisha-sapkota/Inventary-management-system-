@@ -70,10 +70,10 @@ const SupplierFormModal = ({
             </button>
             <button
               type="button"
-              onClick={() => setSupplierFormData({ ...supplierFormData, status: 'Unactive' })}
-              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${supplierFormData.status === 'Unactive' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}
+              onClick={() => setSupplierFormData({ ...supplierFormData, status: 'Inactive' })}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${supplierFormData.status === 'Inactive' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}
             >
-              Unactive
+              Inactive
             </button>
           </div>
         </div>

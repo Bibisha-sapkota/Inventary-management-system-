@@ -159,3 +159,35 @@ export function SettingsRow({ title, description, enabled, onToggle }) {
     </div>
   );
 }
+
+export function Pagination({ currentPage, totalItems, pageSize, onPageChange, darkMode }) {
+  const totalPages = Math.ceil(totalItems / pageSize);
+  if (totalPages <= 1) return null;
+  return (
+    <div className={`flex items-center justify-end gap-2 px-6 py-4 border-t transition-colors ${darkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-white'} rounded-b-2xl`}>
+      <button 
+        onClick={() => onPageChange(currentPage - 1)} 
+        disabled={currentPage === 1}
+        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+      >
+        Previous
+      </button>
+      {[...Array(totalPages)].map((_, i) => (
+        <button 
+          key={i}
+          onClick={() => onPageChange(i + 1)}
+          className={`w-10 h-10 rounded-xl text-sm font-bold transition-colors ${currentPage === i + 1 ? 'bg-blue-600 text-white shadow-sm border-blue-600' : `border ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button 
+        onClick={() => onPageChange(currentPage + 1)} 
+        disabled={currentPage === totalPages}
+        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+      >
+        Next
+      </button>
+    </div>
+  );
+}

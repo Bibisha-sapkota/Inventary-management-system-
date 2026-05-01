@@ -8,9 +8,9 @@ const OrderFormModal = ({
   setOrderFormData,
   handleSaveOrder,
   darkMode,
-  customers,
-  products,
-  orders,
+  customers = [],
+  products = [],
+  orders = [],
   labelClass,
   inputClass
 }) => {

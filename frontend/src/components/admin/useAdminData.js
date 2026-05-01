@@ -12,6 +12,7 @@ export const useAdminData = (token, navigate) => {
   const [notifications, setNotifications] = useState([]);
   const [exchanges, setExchanges] = useState([]);
   const [historyLogs, setHistoryLogs] = useState([]);
+  const [settings, setSettings] = useState(null);
 
   const fetchData = async () => {
     if (!token) return;
@@ -19,7 +20,7 @@ export const useAdminData = (token, navigate) => {
       setLoading(true);
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [pRes, oRes, iRes, sRes, cRes, nRes, exRes, hRes] = await Promise.all([
+      const [pRes, oRes, iRes, sRes, cRes, nRes, exRes, hRes, setRes] = await Promise.all([
         fetch(`${API_URL}/products`, { headers }),
         fetch(`${API_URL}/orders`, { headers }),
         fetch(`${API_URL}/invoices`, { headers }),
@@ -28,6 +29,7 @@ export const useAdminData = (token, navigate) => {
         fetch(`${API_URL}/notifications`, { headers }),
         fetch(`${API_URL}/exchanges`, { headers }),
         fetch(`${API_URL}/history`, { headers }),
+        fetch(`${API_URL}/settings`, { headers }),
       ]);
 
       const pData = await pRes.json();
@@ -38,6 +40,7 @@ export const useAdminData = (token, navigate) => {
       const nData = await nRes.json();
       const exData = await exRes.json();
       const hData = await hRes.json();
+      const setData = await setRes.json();
 
       if (pData.success) setProducts(pData.data);
       if (oData.success) setOrders(oData.data);
@@ -45,6 +48,7 @@ export const useAdminData = (token, navigate) => {
       if (sData.success) setSuppliers(sData.data);
       if (cData.success) setCustomers(cData.data);
       if (exData.success) setExchanges(exData.data);
+      if (setData.success) setSettings(setData.data);
       if (hData.success) setHistoryLogs(hData.data.map(log => ({
         ...log,
         id: log._id || log.id,
@@ -138,6 +142,8 @@ export const useAdminData = (token, navigate) => {
     setExchanges,
     historyLogs,
     setHistoryLogs,
+    settings,
+    setSettings,
     fetchData,
     fetchNotifications,
     fetchHistoryLogs

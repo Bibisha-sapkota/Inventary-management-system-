@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 const {
     signup,
     login,
-    updateUserRole, // ⚠️ New
+    updateUserRole,
     getProfile,
     updateProfile,
     changePassword,
@@ -14,7 +14,11 @@ const {
     verifyOTP,
     resetPassword,
     updateSettings,
-    resetData
+    resetData,
+    getAllUsers,
+    deleteUser,
+    updateAnyUserRole,
+    updateUserStatus
 } = require('../controllers/authController');
 
 // Standard Auth
@@ -33,6 +37,12 @@ router.put('/change-password', protect, changePassword);
 router.put('/update-role', protect, updateUserRole);
 router.put('/settings', protect, updateSettings);
 router.delete('/reset-data', protect, resetData);
+
+// Superadmin Routes
+router.get('/users', protect, authorize('superadmin'), getAllUsers);
+router.delete('/users/:id', protect, authorize('superadmin'), deleteUser);
+router.put('/users/:id/role', protect, authorize('superadmin'), updateAnyUserRole);
+router.put('/users/:id/status', protect, authorize('superadmin'), updateUserStatus);
 
 // Google Auth
 router.get('/google', passport.authenticate('google', {

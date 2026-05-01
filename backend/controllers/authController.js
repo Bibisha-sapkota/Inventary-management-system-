@@ -56,6 +56,9 @@ const login = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
 
         if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+        if (user.status === 'blocked') {
+            return res.status(403).json({ message: 'You are blocked by superadmin' });
+        }
         if (!user.password) return res.status(400).json({ message: 'Please use "Continue with Google"' });
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -116,7 +119,7 @@ const updateUserRole = async (req, res) => {
         const { role } = req.body;
         
         // Security Check
-        if (role !== 'admin' && role !== 'customer') {
+        if (role !== 'admin' && role !== 'customer' && role !== 'superadmin') {
             return res.status(400).json({ message: "Invalid role" });
         }
 
@@ -301,6 +304,54 @@ const changePassword = async (req, res) => {
     }
 };
 
+// @route GET /api/auth/users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+        res.json({ success: true, count: users.length, data: users });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+// @route DELETE /api/auth/users/:id
+const deleteUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Prevent deleting yourself
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: "You cannot delete your own superadmin account" });
+        }
+
+        await user.deleteOne();
+        res.json({ success: true, message: "User removed successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+// @route PUT /api/auth/users/:id/role
+const updateAnyUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        if (!['customer', 'admin', 'superadmin'].includes(role)) {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        user.role = role;
+        await user.save();
+
+        res.json({ success: true, message: "User role updated", user });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
 const resetData = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -325,6 +376,32 @@ const resetData = async (req, res) => {
     }
 };
 
+// @route PUT /api/auth/users/:id/status
+const updateUserStatus = async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!['active', 'blocked'].includes(status)) {
+            return res.status(400).json({ message: "Invalid status" });
+        }
+
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Prevent blocking yourself
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: "You cannot block your own superadmin account" });
+        }
+
+        user.status = status;
+        await user.save();
+
+        res.json({ success: true, message: `User status updated to ${status}`, user });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
 module.exports = {
-    signup, login, updateUserRole, forgotPassword, verifyOTP, resetPassword, getProfile, updateProfile, updateSettings, changePassword, resetData
+    signup, login, updateUserRole, forgotPassword, verifyOTP, resetPassword, getProfile, updateProfile, updateSettings, changePassword, resetData,
+    getAllUsers, deleteUser, updateAnyUserRole, updateUserStatus
 };

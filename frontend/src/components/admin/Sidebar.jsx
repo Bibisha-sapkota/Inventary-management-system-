@@ -16,6 +16,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { SidebarItem, SidebarSubItem } from "./AdminUI";
+import logoImg from "../../images/logo.png";
 
 const Sidebar = ({
   activeTab,
@@ -52,9 +53,9 @@ const Sidebar = ({
     <aside className="w-72 flex flex-col fixed h-full z-10 transition-all duration-500 shadow-[20px_0_60px_rgba(0,0,0,0.2)] bg-[#0B1120] border-r border-[#1e293b]">
       <div className="p-8 border-b border-white/5 transition-all">
         <div className="flex items-center gap-4 mb-6 group cursor-pointer" onClick={() => switchTab("dashboard")}>
-          <div className="w-24 h-24 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
+          <div className="w-12 h-12 flex items-center justify-center transition-all duration-300 group-hover:scale-105">
             <img
-              src="/images/logo.png"
+              src={logoImg}
               alt="Logo"
               className="w-full h-full object-contain filter drop-shadow-[0_5px_15px_rgba(255,255,255,0.1)]"
               onError={(e) => {
@@ -110,30 +111,6 @@ const Sidebar = ({
             </li>
           )}
 
-          {("customers customer list card view add customer").includes(s) && (
-            <li>
-              <button
-                onClick={() => setCustomerMenuOpen(!customerMenuOpen)}
-                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all uppercase text-xs font-black tracking-widest ${activeTab === "customers"
-                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-white/10"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  }`}
-              >
-                <span className="flex items-center gap-3">
-                  <User size={20} />
-                  <span>Customers</span>
-                </span>
-                {customerMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-              {(customerMenuOpen || s) && (
-                <ul className="mt-1 ml-6 space-y-1">
-                  {("customer list").includes(s) && <SidebarSubItem label="Customer List" active={activeTab === "customers" && customerViewMode === "table"} onClick={() => { switchTab("customers"); setCustomerViewMode("table"); }} />}
-                  {("card view").includes(s) && <SidebarSubItem label="Card View" active={activeTab === "customers" && customerViewMode === "cards"} onClick={() => { switchTab("customers"); setCustomerViewMode("cards"); }} />}
-                  {("add customer").includes(s) && <SidebarSubItem label="Add Customer" active={false} onClick={() => { switchTab("customers"); setShowCustomerForm(true); }} />}
-                </ul>
-              )}
-            </li>
-          )}
 
           {("suppliers supplier detail add supplier").includes(s) && (
             <li>
@@ -227,30 +204,6 @@ const Sidebar = ({
             </li>
           )}
 
-          {("invoices all invoices manual invoice scan barcode").includes(s) && (
-            <li>
-              <button
-                onClick={() => setInvoiceSidebarOpen(!invoiceSidebarOpen)}
-                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all uppercase text-xs font-black tracking-widest ${activeTab === "invoices"
-                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-white/10"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  }`}
-              >
-                <span className="flex items-center gap-3">
-                  <Receipt size={20} />
-                  <span>Invoices</span>
-                </span>
-                {invoiceSidebarOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-              {(invoiceSidebarOpen || s) && (
-                <ul className="mt-1 ml-6 space-y-1">
-                  {("all invoices").includes(s) && <SidebarSubItem label="All Invoices" active={activeTab === "invoices"} onClick={() => switchTab("invoices")} />}
-                  {("manual invoice").includes(s) && <SidebarSubItem label="Manual Invoice" active={false} onClick={() => { switchTab("invoices"); openAddInvoice(); }} />}
-                  {("scan barcode").includes(s) && <SidebarSubItem label="Scan Barcode" active={false} onClick={() => { switchTab("invoices"); setShowScannerInvoice(true); }} />}
-                </ul>
-              )}
-            </li>
-          )}
 
           {("reports").includes(s) && (
             <SidebarItem icon={<FileText size={20} />} label="Reports" active={activeTab === "reports"} onClick={() => switchTab("reports")} />

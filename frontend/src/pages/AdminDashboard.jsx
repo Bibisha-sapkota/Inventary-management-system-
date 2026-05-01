@@ -73,9 +73,7 @@ import Header from "../components/admin/Header";
 import ProductsTab from "../components/admin/ProductsTab";
 import ProductCardsTab from "../components/admin/ProductCardsTab";
 import DashboardTab from "../components/admin/DashboardTab";
-import InvoicesTab from "../components/admin/InvoicesTab";
 import OrdersTab from "../components/admin/OrdersTab";
-import CustomersTab from "../components/admin/CustomersTab";
 import SuppliersTab from "../components/admin/SuppliersTab";
 import NotificationsTab from "../components/admin/NotificationsTab";
 import ExchangesTab from "../components/admin/ExchangesTab";
@@ -87,8 +85,6 @@ import ReportsTab from "../components/admin/ReportsTab";
 // Modular Modals
 import CSVImportModal from "../components/admin/CSVImportModal";
 import BarcodeScannerInvoiceModal from "../components/admin/BarcodeScannerInvoiceModal";
-import ManualInvoiceModal from "../components/admin/modals/ManualInvoiceModal";
-import CustomerFormModal from "../components/admin/modals/CustomerFormModal";
 import OrderFormModal from "../components/admin/modals/OrderFormModal";
 import ProductFormModal from "../components/admin/modals/ProductFormModal";
 import SupplierFormModal from "../components/admin/modals/SupplierFormModal";
@@ -105,7 +101,11 @@ const AdminDashboard = ({ initialTab }) => {
 
   // --- STATE ---
   const [activeTab, setActiveTab] = useState(initialTab || localStorage.getItem("activeTab") || "dashboard");
-  const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
+  const [pages, setPages] = useState({ products: 1, orders: 1, suppliers: 1 });
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('appSettings');
+    return saved ? JSON.parse(saved).darkMode : localStorage.getItem("darkMode") === "true";
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState("");
   const [showToast, setShowToast] = useState(false);
@@ -125,9 +125,7 @@ const AdminDashboard = ({ initialTab }) => {
   // Modal visibility states
   const [showProductForm, setShowProductForm] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
-  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [showSupplierForm, setShowSupplierForm] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [showExchangeForm, setShowExchangeForm] = useState(false);
   const [showLotForm, setShowLotForm] = useState(false);
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
@@ -136,9 +134,7 @@ const AdminDashboard = ({ initialTab }) => {
   // Form Data States
   const [productFormData, setProductFormData] = useState({ name: "", price: 0, stock: 0, category: "General", status: "Active" });
   const [orderFormData, setOrderFormData] = useState({ product: "", customer: "", status: "Pending", date: new Date().toISOString().split("T")[0], amount: "" });
-  const [invoiceFormData, setInvoiceFormData] = useState({ sno: "", customer: "", items: [], paymentMethod: "Cash" });
   const [supplierFormData, setSupplierFormData] = useState({ name: "", contactPerson: "", phone: "", category: "Regular", status: "Active" });
-  const [customerFormData, setCustomerFormData] = useState({ name: "", email: "", phone: "", status: "active" });
   const [exchangeFormData, setExchangeFormData] = useState({ type: "customer", customerName: "", returnedProductId: "", newProductId: "", quantity: 1, reason: "", restocked: true });
   const [lotFormData, setLotFormData] = useState({ lotNumber: "", receivedDate: "", items: [] });
   const [lotNewItem, setLotNewItem] = useState({ productName: "", quantityReceived: 0, purchasePrice: 0 });
@@ -147,11 +143,8 @@ const AdminDashboard = ({ initialTab }) => {
   const [editProductIndex, setEditProductIndex] = useState(null);
   const [editOrderId, setEditOrderId] = useState(null);
   const [editSupplierId, setEditSupplierId] = useState(null);
-  const [editCustomerId, setEditCustomerId] = useState(null);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedSupplierForLots, setSelectedSupplierForLots] = useState(null);
   const [lotTargetSupplier, setLotTargetSupplier] = useState(null);
-  const [customerViewMode, setCustomerViewMode] = useState("table");
   const [expandedSupplierId, setExpandedSupplierId] = useState(null);
   const [supplierDetailData, setSupplierDetailData] = useState({});
   const [reportRange, setReportRange] = useState("month");
@@ -180,8 +173,20 @@ const AdminDashboard = ({ initialTab }) => {
     loading, products, setProducts, orders, setOrders, invoices, setInvoices,
     suppliers, setSuppliers, customers, setCustomers, notifications, setNotifications,
     exchanges, setExchanges, historyLogs, setHistoryLogs,
+    settings: globalSettings, setSettings: setGlobalSettings,
     fetchData, fetchNotifications, fetchHistoryLogs
   } = useAdminData(token, navigate);
+
+  useEffect(() => {
+    if (globalSettings) {
+      setSettings({
+        lowStockThreshold: globalSettings.lowStockThreshold,
+        taxRate: globalSettings.taxRate / 100,
+        defaultDiscountRate: globalSettings.defaultDiscount,
+        enableNotifications: true, // or from globalSettings if added
+      });
+    }
+  }, [globalSettings]);
 
   const triggerToast = (msg) => {
     setToastMessage(msg);
@@ -194,11 +199,11 @@ const AdminDashboard = ({ initialTab }) => {
     setProducts, setOrders, setInvoices, setSuppliers, setCustomers, setNotifications,
     setExchanges, setHistoryLogs, products, orders, invoices, suppliers, customers,
     notifications, exchanges, settings, profile,
-    setProductFormData, setShowProductForm, setEditProductIndex, setInvoiceFormData,
-    setShowInvoiceForm, setOrderFormData, setShowOrderForm, setEditOrderId,
+    setProductFormData, setShowProductForm, setEditProductIndex,
+    setOrderFormData, setShowOrderForm, setEditOrderId,
     setSupplierFormData, setShowSupplierForm, setEditSupplierId, setLotFormData,
     setShowLotForm, setLotTargetSupplier, setLotNewItem, setExchangeFormData,
-    setShowExchangeForm, setCustomerFormData, setShowCustomerForm, setEditCustomerId,
+    setShowExchangeForm,
     setSupplierDetailData, setExpandedSupplierId, expandedSupplierId, supplierDetailData,
     setShowScannerInvoice
   });
@@ -251,21 +256,6 @@ const AdminDashboard = ({ initialTab }) => {
     }
   };
 
-  const calculateInvoiceAmounts = () => {
-    const subtotal = (invoiceFormData.items || []).reduce(
-      (acc, item) => acc + Number(item.qty || 0) * Number(item.price || 0),
-      0
-    );
-    const discountRate = (invoiceFormData.discountRate || 0) / 100;
-    const taxRate = (invoiceFormData.taxRate || 0) / 100;
-    const discount = subtotal * discountRate;
-    const tax = (subtotal - discount) * taxRate;
-    const grandTotal = subtotal - discount + tax;
-    return { subtotal, discount, tax, grandTotal };
-  };
-
-  const invoiceTotals = calculateInvoiceAmounts();
-
   const cardClass = darkMode
     ? "bg-gray-800/60 backdrop-blur-xl border border-gray-700/50 text-white shadow-2xl"
     : "bg-white/90 backdrop-blur-xl border border-white/40 text-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.05)]";
@@ -296,7 +286,7 @@ const AdminDashboard = ({ initialTab }) => {
     o.customerPhone?.toLowerCase().includes(q)
   );
 
-  const customerStats = customers.map(c => {
+  const customerStats = (customers || []).map(c => {
     const cInvoices = invoices.filter(inv => inv.customer?.toLowerCase() === c.name?.toLowerCase());
     return { ...c, totalSpent: cInvoices.reduce((s, i) => s + (i.totalAmount || 0), 0), totalOrders: cInvoices.length };
   });
@@ -308,20 +298,20 @@ const AdminDashboard = ({ initialTab }) => {
     c.customerId?.toLowerCase().includes(q)
   );
 
-  const filteredInvoices = invoices.filter(inv =>
+  const filteredInvoices = (invoices || []).filter(inv =>
     inv.invoiceId?.toLowerCase().includes(q) ||
     inv.customer?.name?.toLowerCase().includes(q) ||
     inv.paymentMethod?.toLowerCase().includes(q) ||
     inv.status?.toLowerCase().includes(q)
   );
 
-  const filteredNotifications = notifications.filter(n =>
+  const filteredNotifications = (notifications || []).filter(n =>
     n.title?.toLowerCase().includes(q) ||
     n.message?.toLowerCase().includes(q) ||
     n.type?.toLowerCase().includes(q)
   );
 
-  const filteredExchanges = exchanges.filter(ex =>
+  const filteredExchanges = (exchanges || []).filter(ex =>
     ex.customerName?.toLowerCase().includes(q) ||
     ex.returnedProduct?.name?.toLowerCase().includes(q) ||
     ex.newProduct?.name?.toLowerCase().includes(q) ||
@@ -329,22 +319,22 @@ const AdminDashboard = ({ initialTab }) => {
   );
 
   // Stats for Dashboard
-  const totalRevenue = invoices.reduce((s, inv) => s + (inv.totalAmount || 0), 0);
-  const activeProductsCount = products.filter(p => p.status === "Active").length;
-  const unactiveProductsCount = products.filter(p => p.status === "Unactive").length;
-  const lowStockProducts = products.filter(p => p.stock <= settings.lowStockThreshold);
-  const expirySoonProducts = products.filter(p => {
+  const totalRevenue = (invoices || []).reduce((s, inv) => s + (inv.totalAmount || 0), 0);
+  const activeProductsCount = (products || []).filter(p => p.status === "Active").length;
+  const unactiveProductsCount = (products || []).filter(p => p.status === "Unactive").length;
+  const lowStockProducts = (products || []).filter(p => p.stock <= settings.lowStockThreshold);
+  const expirySoonProducts = (products || []).filter(p => {
     if (!p.expiryDate) return false;
     const diff = new Date(p.expiryDate) - new Date();
     return diff > 0 && diff < 30 * 24 * 60 * 60 * 1000;
   });
 
-  const recentProducts = [...products].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
-  const recentOrders = [...orders].slice(-3).reverse();
-  const recentInvoices = [...invoices].slice(0, 5);
-  const recentHistory = [...historyLogs].slice(0, 5);
+  const recentProducts = [...(products || [])].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
+  const recentOrders = [...(orders || [])].slice(-3).reverse();
+  const recentInvoices = [...(invoices || [])].slice(0, 5);
+  const recentHistory = [...(historyLogs || [])].slice(0, 5);
 
-  const salesData = Object.entries(invoices.reduce((acc, inv) => {
+  const salesData = Object.entries((invoices || []).reduce((acc, inv) => {
     const date = inv.date || new Date(inv.createdAt).toISOString().split('T')[0];
     acc[date] = (acc[date] || 0) + (inv.totalAmount || 0);
     return acc;
@@ -352,19 +342,19 @@ const AdminDashboard = ({ initialTab }) => {
     name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     uv: amount
   })).sort((a, b) => new Date(a.name) - new Date(b.name)).slice(-7); // Last 7 days with data
-  const stockByCategoryData = Object.entries(products.reduce((acc, p) => {
+  const stockByCategoryData = Object.entries((products || []).reduce((acc, p) => {
     const cat = p.category || "General";
     acc[cat] = (acc[cat] || 0) + (p.stock || 0);
     return acc;
   }, {})).map(([name, count]) => ({ name, count }));
 
-  const categoryPieData = Object.entries(products.reduce((acc, p) => {
+  const categoryPieData = Object.entries((products || []).reduce((acc, p) => {
     const cat = p.category || "General";
     acc[cat] = (acc[cat] || 0) + 1;
     return acc;
   }, {})).map(([name, value]) => ({ name, value }));
 
-  const categoryReport = Object.entries(products.reduce((acc, p) => {
+  const categoryReport = Object.entries((products || []).reduce((acc, p) => {
     const cat = p.category || "General";
     if (!acc[cat]) acc[cat] = { category: cat, totalStock: 0, productCount: 0, inventoryValue: 0 };
     acc[cat].totalStock += p.stock || 0;
@@ -413,16 +403,12 @@ const AdminDashboard = ({ initialTab }) => {
         setExchangeMenuOpen={setExchangeMenuOpen}
         productMenuOpen={productMenuOpen}
         setProductMenuOpen={setProductMenuOpen}
-        invoiceSidebarOpen={invoiceSidebarOpen}
-        setInvoiceSidebarOpen={setInvoiceSidebarOpen}
-        customerViewMode={customerViewMode}
-        setCustomerViewMode={setCustomerViewMode}
         exchangeFormData={exchangeFormData}
         setExchangeFormData={setExchangeFormData}
         setShowOrderForm={setShowOrderForm}
-        setShowCustomerForm={setShowCustomerForm}
+        setShowCustomerForm={() => {}} 
         openAddSupplier={() => { setSupplierFormData({ name: "", contactPerson: "", phone: "", category: "Regular", status: "Active" }); setEditSupplierId(null); setShowSupplierForm(true); }}
-        openAddInvoice={() => { setInvoiceFormData({ sno: generateSequentialInvoiceId(invoices), customer: "", items: [{ product: "", qty: 1, price: 0 }], paymentMethod: "Cash", discountRate: settings.defaultDiscountRate, taxRate: settings.taxRate * 100 }); setShowInvoiceForm(true); }}
+        openAddInvoice={() => {}}
         setShowScannerInvoice={setShowScannerInvoice}
         setShowExchangeForm={setShowExchangeForm}
         handleLogout={() => handlers.handleLogout(navigate, clearAuth)}
@@ -487,6 +473,8 @@ const AdminDashboard = ({ initialTab }) => {
             openAddProduct={() => { setShowProductForm(true); setEditProductIndex(null); }}
             handleEditProduct={(idx) => { setProductFormData({ ...products[idx] }); setEditProductIndex(idx); setShowProductForm(true); }}
             handleDeleteProduct={handlers.handleDeleteProduct} settings={settings}
+            currentPage={pages.products}
+            onPageChange={(p) => setPages({ ...pages, products: p })}
           />
         )}
 
@@ -501,21 +489,6 @@ const AdminDashboard = ({ initialTab }) => {
           />
         )}
 
-        {activeTab === "invoices" && (
-          <InvoicesTab
-            invoices={filteredInvoices}
-            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-            darkMode={darkMode} cardClass={cardClass}
-            invoiceMenuOpen={invoiceSidebarOpen}
-            setInvoiceMenuOpen={setInvoiceSidebarOpen}
-            openAddInvoice={() => setShowInvoiceForm(true)}
-            setShowScannerInvoice={setShowScannerInvoice}
-            handlePreviewInvoice={(inv) => handlePreviewInvoice(inv, settings)}
-            handleDownloadInvoice={(inv) => handleDownloadInvoice(inv, settings)}
-            handlePrintInvoice={(inv) => handlePrintInvoice(inv, settings)}
-            handleDeleteInvoice={handlers.handleDeleteInvoice}
-          />
-        )}
 
         {activeTab === "orders" && (
           <OrdersTab
@@ -526,26 +499,8 @@ const AdminDashboard = ({ initialTab }) => {
             setEditOrderId={setEditOrderId} setOrderFormData={setOrderFormData}
             handleEditOrder={(order) => { setOrderFormData({ ...order }); setEditOrderId(order._id); setShowOrderForm(true); }}
             handleDeleteOrder={handlers.handleDeleteOrder}
-          />
-        )}
-
-        {activeTab === "customers" && (
-          <CustomersTab
-            customers={filteredCustomerStats} customerStats={customerStats}
-            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-            activeCustomersCount={activeCustomersCount} blockedCustomersCount={blockedCustomersCount}
-            totalCustomerSpent={totalCustomerSpent} customerViewMode={customerViewMode}
-            setCustomerViewMode={setCustomerViewMode} darkMode={darkMode} cardClass={cardClass}
-            openAddCustomer={() => {
-              const nextSno = `CUST-${String(customers.length + 1).padStart(4, "0")}`;
-              setCustomerFormData({ sno: nextSno, name: "", email: "", phone: "", status: "active" });
-              setEditCustomerId(null);
-              setShowCustomerForm(true);
-            }}
-            setSelectedCustomer={setSelectedCustomer}
-            handleToggleCustomerStatus={handlers.handleToggleCustomerStatus}
-            handleEditCustomer={(c) => { setCustomerFormData({ ...c }); setEditCustomerId(c._id); setShowCustomerForm(true); }}
-            handleDeleteCustomer={handlers.handleDeleteCustomer}
+            currentPage={pages.orders}
+            onPageChange={(p) => setPages({ ...pages, orders: p })}
           />
         )}
 
@@ -577,6 +532,8 @@ const AdminDashboard = ({ initialTab }) => {
               }
             }}
             handleDeleteProduct={handlers.handleDeleteProduct}
+            currentPage={pages.suppliers}
+            onPageChange={(p) => setPages({ ...pages, suppliers: p })}
           />
         )}
 
@@ -653,6 +610,13 @@ const AdminDashboard = ({ initialTab }) => {
       </main>
 
       {/* MODALS */}
+      <OrderFormModal
+        showOrderForm={showOrderForm} setShowOrderForm={setShowOrderForm}
+        orderFormData={orderFormData} setOrderFormData={setOrderFormData}
+        handleSaveOrder={() => handlers.handleSaveOrder(orderFormData, editOrderId)}
+        darkMode={darkMode} products={products} labelClass={labelClass} inputClass={inputClass}
+      />
+
       <ProductFormModal
         showProductForm={showProductForm} setShowProductForm={setShowProductForm}
         productFormData={productFormData} setProductFormData={setProductFormData}
@@ -669,20 +633,7 @@ const AdminDashboard = ({ initialTab }) => {
         labelClass={labelClass} inputClass={inputClass}
       />
 
-      <ManualInvoiceModal
-        showInvoiceForm={showInvoiceForm} setShowInvoiceForm={setShowInvoiceForm}
-        handleSaveInvoice={() => handlers.handleSaveInvoice(invoiceFormData, invoiceTotals)}
-        darkMode={darkMode} invoiceFormData={invoiceFormData} setInvoiceFormData={setInvoiceFormData}
-        customers={customers} products={products} invoiceTotals={invoiceTotals}
-        labelClass={labelClass} inputClass={inputClass}
-      />
 
-      <CustomerFormModal
-        showCustomerForm={showCustomerForm} setShowCustomerForm={setShowCustomerForm}
-        editCustomerId={editCustomerId} handleSaveCustomer={() => handlers.handleSaveCustomer(customerFormData, editCustomerId)}
-        customerFormData={customerFormData} setCustomerFormData={setCustomerFormData}
-        darkMode={darkMode} labelClass={labelClass} inputClass={inputClass}
-      />
 
       <SupplierFormModal
         showSupplierForm={showSupplierForm} setShowSupplierForm={setShowSupplierForm}

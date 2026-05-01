@@ -38,7 +38,9 @@ export default function Login() {
       saveAuth(res.data.token, userData);
 
       // Redirect based on Role
-      if (res.data.role === 'admin') {
+      if (res.data.role === 'superadmin') {
+        navigate('/superadmin');
+      } else if (res.data.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/customer');

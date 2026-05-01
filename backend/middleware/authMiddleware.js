@@ -30,7 +30,18 @@ const protect = async (req, res, next) => {
     }
 };
 
-// This function generates the JWT token
+// Role Authorization
+const authorize = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user || !roles.includes(req.user.role)) {
+            return res.status(403).json({ 
+                message: `User role ${req.user ? req.user.role : 'unknown'} is not authorized to access this resource` 
+            });
+        }
+        next();
+    };
+};
+
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
@@ -38,4 +49,4 @@ const generateToken = (id) => {
 };
 
 // IMPORTANT: We export BOTH functions so your router can find them
-module.exports = { protect, generateToken };
+module.exports = { protect, generateToken, authorize };

@@ -10,6 +10,7 @@ import GoogleSuccess from "./pages/auth/GoogleSuccess";
 import AdminDashboard from "./pages/AdminDashboard";
 // Changed import path here:
 import CustomerDashboard from "./components/customer/CustomerDashboard";
+import SuperadminDashboard from "./pages/superadmin/SuperadminDashboard";
 import PrivateRoute from "./components/PrivateRoute";
 
 import Home from "./pages/Home";
@@ -182,12 +183,12 @@ function App() {
           }
         />
 
-        {/* ============ CUSTOMER ROUTES ============ */}
+        {/* ============ SUPERADMIN ROUTES ============ */}
         <Route
-          path="/customer"
+          path="/superadmin"
           element={
-            <PrivateRoute allowedRoles={["customer"]}>
-              <CustomerDashboard />
+            <PrivateRoute allowedRoles={["superadmin"]}>
+              <SuperadminDashboard />
             </PrivateRoute>
           }
         />

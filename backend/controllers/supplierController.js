@@ -8,12 +8,20 @@ const { logActivity } = require('../utils/logger');
 // @access  Private
 const getSuppliers = async (req, res) => {
     try {
-        const suppliers = await Supplier.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'User context missing' });
+        }
+
+        // Superadmins see all suppliers, others only see their own
+        const query = req.user.role === 'superadmin' ? {} : { createdBy: req.user._id };
+        const suppliers = await Supplier.find(query).sort({ createdAt: -1 });
+        
         res.status(200).json({
             success: true,
-            data: suppliers
+            data: suppliers || []
         });
     } catch (error) {
+        console.error('❌ GetSuppliers Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

@@ -22,7 +22,8 @@ export default function GoogleSuccess() {
         setShowRoleSelection(true);
         setLoading(false);
       } else {
-        if (user.role === 'admin') navigate('/admin');
+        if (user.role === 'superadmin') navigate('/superadmin');
+        else if (user.role === 'admin') navigate('/admin');
         else navigate('/customer');
       }
     } else {
@@ -39,7 +40,8 @@ export default function GoogleSuccess() {
       storedUser.role = role;
       localStorage.setItem('user', JSON.stringify(storedUser));
 
-      if (role === 'admin') navigate('/admin');
+      if (role === 'superadmin') navigate('/superadmin');
+      else if (role === 'admin') navigate('/admin');
       else navigate('/customer');
       
     } catch (error) {
