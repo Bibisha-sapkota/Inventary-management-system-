@@ -13,6 +13,14 @@ require('./config/passport');
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const historyRoutes = require('./routes/historyRoutes');
+const exchangeRoutes = require('./routes/exchangeRoutes');
+const openaiRoutes = require('./routes/openaiRoutes');
+const inquiryRoutes = require('./routes/inquiryRoutes');
 
 const app = express();
 
@@ -20,10 +28,11 @@ const app = express();
 // MIDDLEWARE
 // ========================
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: true, // Dynamically allow the origin that is making the request
     credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 app.use(session({
     secret: process.env.JWT_SECRET,
@@ -45,13 +54,21 @@ mongoose.connect(process.env.MONGODB_URI)
 // ROUTES
 // ========================
 app.use('/api/auth', authRoutes);
-app.use('/auth', authRoutes); // For Google OAuth (without /api)
+app.use('/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/history', historyRoutes);
+app.use('/api/exchanges', exchangeRoutes);
+app.use('/api/chat', openaiRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
-    res.json({ 
+    res.json({
         success: true,
         message: '🚀 Grocery Inventory API Running!',
         endpoints: {
@@ -70,6 +87,10 @@ app.use((err, req, res, next) => {
         message: err.message || 'Server Error'
     });
 });
+
+// Background Jobs Disabled: Emails now only trigger on manual Product/Order updates as requested.
+// const startDailyAlertJob = require('./jobs/dailyAlertJob');
+// startDailyAlertJob();
 
 // ========================
 // START SERVER

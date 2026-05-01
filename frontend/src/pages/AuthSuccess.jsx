@@ -48,7 +48,7 @@ export default function AuthSuccess() {
     }, [searchParams, navigate]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-100 to-blue-100">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-100 to-green-100">
             <div className="bg-white p-8 rounded-xl shadow-lg text-center">
                 {/* Loading Spinner */}
                 <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-500 border-t-transparent mx-auto mb-4"></div>

@@ -16,10 +16,19 @@ const sendEmail = async (options) => {
     to: options.email,
     subject: options.subject,
     text: options.message, // सादा मोबाइलको लागि
-    html: options.html     // ⚠️ IMPORTANT: यो लाइनले गर्दा बल्ल डिजाइन जान्छ
+    html: options.html,    // ⚠️ IMPORTANT: यो लाइनले गर्दा बल्ल डिजाइन जान्छ
+    attachments: options.attachments || [] // Add this line for PDF support
   };
 
-  await transporter.sendMail(message);
+  try {
+    console.log(`[EMAIL] Attempting to send to: ${options.email}`);
+    const info = await transporter.sendMail(message);
+    console.log(`[EMAIL] Success! Message ID: ${info.messageId}`);
+  } catch (error) {
+    console.error(`[EMAIL] FAILED to send to ${options.email}`);
+    console.error(`[EMAIL] Error Reason: ${error.message}`);
+    throw error; // Rethrow so the controller can handle it
+  }
 };
 
 module.exports = sendEmail;

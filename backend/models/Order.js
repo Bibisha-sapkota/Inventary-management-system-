@@ -5,6 +5,10 @@ const orderSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Product name is required']
     },
+    invoiceNumber: {
+        type: String,
+        sparse: true
+    },
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product'
@@ -30,6 +34,22 @@ const orderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    customerName: {
+        type: String,
+        default: 'Guest'
+    },
+    customerEmail: {
+        type: String,
+        default: ''
+    },
+    customerPhone: {
+        type: String,
+        default: ''
+    },
+    customerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, { timestamps: true });
 

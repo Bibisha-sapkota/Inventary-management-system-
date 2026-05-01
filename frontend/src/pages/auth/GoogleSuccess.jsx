@@ -59,9 +59,9 @@ export default function GoogleSuccess() {
         <div className="space-y-4">
           <button 
             onClick={() => handleRoleSelect('customer')}
-            className="w-full p-4 border-2 border-blue-100 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition flex items-center justify-between group"
+            className="w-full p-4 border-2 border-green-100 rounded-lg hover:border-green-500 hover:bg-green-50 transition flex items-center justify-between group"
           >
-            <span className="font-semibold text-gray-700 group-hover:text-blue-600">I am a Customer</span>
+            <span className="font-semibold text-gray-700 group-hover:text-green-600">I am a Customer</span>
             <span className="text-2xl">🛒</span>
           </button>
 

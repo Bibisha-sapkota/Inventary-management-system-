@@ -8,8 +8,13 @@ const productSchema = new mongoose.Schema({
     },
     price: {
         type: Number,
-        required: [true, 'Price is required'],
+        required: [true, 'Selling Price (MRP) is required'],
         min: [0, 'Price cannot be negative']
+    },
+    buyingPrice: {
+        type: Number,
+        default: 0,
+        min: [0, 'Buying price cannot be negative']
     },
     stock: {
         type: Number,
@@ -31,8 +36,15 @@ const productSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['in-stock', 'low-stock', 'out-of-stock'],
         default: 'in-stock'
+    },
+    expiryDate: {
+        type: Date,
+        default: null
+    },
+    maxStock: {
+        type: Number,
+        default: 100
     },
     reorderLevel: {
         type: Number,
@@ -41,12 +53,29 @@ const productSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    supplier: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Supplier',
+        default: null
+    },
+    supplierName: {
+        type: String,
+        default: ''
+    },
+    productId: {
+        type: String,
+        default: ''
+    },
+    batchNo: {
+        type: String,
+        default: ''
     }
 }, { timestamps: true });
 
 // Auto update status
-productSchema.pre('save', function(next) {
-    if (this.stock === 0) {
+productSchema.pre('save', function (next) {
+    if (this.stock <= 0) {
         this.status = 'out-of-stock';
     } else if (this.stock <= this.reorderLevel) {
         this.status = 'low-stock';

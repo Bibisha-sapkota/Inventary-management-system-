@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
         default: 'customer'
     },
     phone: { type: String, default: '' },
+    sno: { type: String, default: '' },
+    status: { type: String, default: 'active' },
     bio: { type: String, default: '' },
     location: { type: String, default: '' },
     avatar: { type: String, default: '' },
@@ -32,6 +34,20 @@ const userSchema = new mongoose.Schema({
     googleId: { type: String, default: null },
     isVerified: { type: Boolean, default: false },
     lastLogin: { type: Date, default: null },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    settings: {
+        darkMode: { type: Boolean, default: false },
+        lowStockAlerts: { type: Boolean, default: true },
+        emailNotifications: { type: Boolean, default: true },
+        lowStockThreshold: { type: Number, default: 10 },
+        hideCustomerContacts: { type: Boolean, default: false },
+        requirePasswordForExport: { type: Boolean, default: false },
+        showNotificationDetails: { type: Boolean, default: true },
+        autoBackup: { type: Boolean, default: false },
+    },
     
     // OTP Fields
     resetPasswordToken: String,

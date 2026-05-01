@@ -1,4 +1,7 @@
 const Product = require('../models/Product');
+const { createNotificationInternal } = require('./notificationController');
+const checkStockAlerts = require('../utils/checkStockAlerts');
+const { logActivity } = require('../utils/logger');
 
 // Get All Products
 const getAllProducts = async (req, res) => {
@@ -6,6 +9,10 @@ const getAllProducts = async (req, res) => {
         const { search, category, status, page = 1, limit = 50 } = req.query;
 
         let query = {};
+        
+        if (req.user.role === 'admin') {
+            query.createdBy = req.user._id;
+        }
 
         if (search) {
             query.name = { $regex: search, $options: 'i' };
@@ -77,6 +84,29 @@ const createProduct = async (req, res) => {
             data: product
         });
 
+        // Trigger notification
+        await createNotificationInternal(
+            req.user._id, 
+            'New Product Added', 
+            `${product.name} has been added to your inventory.`,
+            'success',
+            'stock'
+        );
+
+        // Check stock/expiry alerts (conditionally syncs to Gmail and Dashboard)
+        await checkStockAlerts(product, req.user);
+
+        // Log activity
+        await logActivity(
+            req.user._id,
+            'CREATE',
+            'Product',
+            product._id,
+            product.name,
+            `Added new product: ${product.name} at Rs. ${product.price}.`,
+            { stock: product.stock, category: product.category }
+        );
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -107,6 +137,32 @@ const updateProduct = async (req, res) => {
             data: product
         });
 
+        // Check for low stock notification
+        const threshold = 10; // Default threshold
+        if (product.stock <= threshold) {
+            await createNotificationInternal(
+                req.user._id,
+                'Low Stock Alert',
+                `${product.name} is running low on stock (${product.stock} left).`,
+                'warning',
+                'stock'
+            );
+        }
+
+        // Check stock/expiry alerts (conditionally syncs to Gmail and Dashboard)
+        await checkStockAlerts(product, req.user);
+
+        // Log activity
+        await logActivity(
+            req.user._id,
+            'UPDATE',
+            'Product',
+            product._id,
+            product.name,
+            `Updated product details for: ${product.name}.`,
+            { stock: product.stock, price: product.price, status: product.status }
+        );
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -132,6 +188,17 @@ const deleteProduct = async (req, res) => {
             message: 'Product deleted!'
         });
 
+        // Log activity
+        await logActivity(
+            req.user._id,
+            'DELETE',
+            'Product',
+            product._id,
+            product.name,
+            `Deleted product: ${product.name} from inventory.`,
+            { category: product.category }
+        );
+
     } catch (error) {
         res.status(500).json({
             success: false,
@@ -143,12 +210,14 @@ const deleteProduct = async (req, res) => {
 // Get Stats
 const getStats = async (req, res) => {
     try {
-        const totalProducts = await Product.countDocuments();
-        const lowStock = await Product.countDocuments({ status: 'low-stock' });
-        const outOfStock = await Product.countDocuments({ status: 'out-of-stock' });
-        const inStock = await Product.countDocuments({ status: 'in-stock' });
+        const totalProducts = await Product.countDocuments({ createdBy: req.user._id });
+        const unactiveProducts = await Product.countDocuments({ status: 'Unactive', createdBy: req.user._id });
+        const activeProducts = await Product.countDocuments({ status: 'Active', createdBy: req.user._id });
 
         const totalValue = await Product.aggregate([
+            {
+                $match: { createdBy: req.user._id }
+            },
             {
                 $group: {
                     _id: null,
@@ -161,9 +230,8 @@ const getStats = async (req, res) => {
             success: true,
             data: {
                 totalProducts,
-                inStock,
-                lowStock,
-                outOfStock,
+                activeProducts,
+                unactiveProducts,
                 totalValue: totalValue[0]?.total || 0
             }
         });
@@ -176,10 +244,34 @@ const getStats = async (req, res) => {
     }
 };
 
+const createProductsBatch = async (req, res) => {
+    try {
+        const products = req.body;
+        if (!Array.isArray(products)) {
+            return res.status(400).json({ success: false, message: 'Expected an array of products' });
+        }
+        
+        const productsWithUser = products.map(p => ({ ...p, createdBy: req.user._id }));
+        const createdProducts = await Product.insertMany(productsWithUser);
+
+        res.status(201).json({
+            success: true,
+            message: `${createdProducts.length} products imported!`,
+            data: createdProducts
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 module.exports = {
     getAllProducts,
     getProduct,
     createProduct,
+    createProductsBatch,
     updateProduct,
     deleteProduct,
     getStats

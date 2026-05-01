@@ -6,6 +6,7 @@ const {
     getAllProducts,
     getProduct,
     createProduct,
+    createProductsBatch,
     updateProduct,
     deleteProduct,
     getStats
@@ -18,6 +19,7 @@ router.get('/stats', getStats);
 router.get('/', getAllProducts);
 router.get('/:id', getProduct);
 router.post('/', createProduct);
+router.post('/batch', createProductsBatch);
 router.put('/:id', updateProduct);
 router.delete('/:id', deleteProduct);
 

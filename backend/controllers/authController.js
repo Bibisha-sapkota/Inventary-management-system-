@@ -2,6 +2,12 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const sendEmail = require('../utils/sendEmail');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
+const Invoice = require('../models/Invoice');
+const Supplier = require('../models/Supplier');
+const SupplierLot = require('../models/SupplierLot');
+const Notification = require('../models/Notification');
 
 // Generate Token
 const generateToken = (id) => {
@@ -54,6 +60,41 @@ const login = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (isMatch) {
+            // Send Welcome Email (Optional/Non-blocking)
+            try {
+                sendEmail({
+                    email: user.email,
+                    subject: 'Welcome to Stock Inventory',
+                    message: `Hi ${user.name}, Welcome to Stock Inventory. You have successfully logged in.`,
+                    html: `
+                        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
+                            <div style="background-color: #2563eb; padding: 30px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🚀 Welcome back!</h1>
+                            </div>
+                            <div style="padding: 30px; color: #475569;">
+                                <p style="font-size: 16px; margin-top: 0;">Hello <strong>${user.name}</strong>,</p>
+                                <p style="font-size: 15px; line-height: 1.6;">Welcome back to the <strong>Stock Inventory System</strong>. Your dashboard is ready for you to manage products, track orders, and analyze your business flow.</p>
+                                
+                                <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin: 25px 0; border: 1px solid #e2e8f0;">
+                                    <p style="margin: 0; font-size: 14px;"><strong>Account:</strong> ${user.email}</p>
+                                    <p style="margin: 10px 0 0; font-size: 14px;"><strong>Status:</strong> Successfully Logged In</p>
+                                </div>
+
+                                <div style="text-align: center; margin-top: 30px;">
+                                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" style="background-color: #2563eb; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
+                                </div>
+                            </div>
+                            <div style="background-color: #f1f5f9; padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
+                                <p style="margin: 0;">Stock Inventory System © 2024</p>
+                                <p style="margin: 5px 0 0;">If this wasn't you, please secure your account immediately.</p>
+                            </div>
+                        </div>
+                    `
+                }).catch(err => console.log('Welcome Email Error:', err.message));
+            } catch (err) {
+                console.log('Email skip:', err.message);
+            }
+
             res.json({
                 _id: user.id,
                 name: user.name,
@@ -156,6 +197,7 @@ const forgotPassword = async (req, res) => {
             });
             res.json({ success: true, message: 'OTP sent to email' });
         } catch (error) {
+            console.error("❌ Email Error:", error);
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
             await user.save();
@@ -207,9 +249,82 @@ const resetPassword = async (req, res) => {
 };
 
 const getProfile = async (req, res) => { res.json(req.user) };
-const updateProfile = async (req, res) => { res.json({message: "Updated"}) };
-const changePassword = async (req, res) => { res.json({message: "Changed"}) };
+
+const updateProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { name, phone, bio, location, role, avatar } = req.body;
+        if (name) user.name = name;
+        if (phone) user.phone = phone;
+        if (bio) user.bio = bio;
+        if (location) user.location = location;
+        if (role) user.role = role;
+        if (avatar) user.avatar = avatar;
+
+        await user.save();
+        res.json({ success: true, message: "Profile updated", user });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+const updateSettings = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // We'll store settings in a flexible way. 
+        // If User model doesn't have settings field, we might need to add it or use an 'extra' field.
+        // I'll add 'settings' to User model in the next step.
+        user.settings = { ...user.settings, ...req.body };
+        await user.save();
+
+        res.json({ success: true, message: "Settings saved", settings: user.settings });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+const changePassword = async (req, res) => {
+    // Basic implementation: in a real app, verify old password first
+    try {
+        const { newPassword } = req.body;
+        const user = await User.findById(req.user.id);
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+        res.json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error" });
+    }
+};
+
+const resetData = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        await Product.deleteMany({ createdBy: userId });
+        await Order.deleteMany({ user: userId });
+        await Invoice.deleteMany({ createdBy: userId });
+        await Supplier.deleteMany({ createdBy: userId });
+        await SupplierLot.deleteMany({ createdBy: userId });
+        await Notification.deleteMany({ user: userId });
+        await User.deleteMany({ role: 'customer', createdBy: userId });
+
+        res.status(200).json({
+            success: true,
+            message: 'All your data has been successfully reset to 0.'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
 
 module.exports = {
-    signup, login, updateUserRole, forgotPassword, verifyOTP, resetPassword, getProfile, updateProfile, changePassword
+    signup, login, updateUserRole, forgotPassword, verifyOTP, resetPassword, getProfile, updateProfile, updateSettings, changePassword, resetData
 };

@@ -12,7 +12,9 @@ const {
     changePassword,
     forgotPassword,
     verifyOTP,
-    resetPassword
+    resetPassword,
+    updateSettings,
+    resetData
 } = require('../controllers/authController');
 
 // Standard Auth
@@ -28,7 +30,9 @@ router.post('/reset-password', resetPassword);
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
-router.put('/update-role', protect, updateUserRole); // ⚠️ New Route
+router.put('/update-role', protect, updateUserRole);
+router.put('/settings', protect, updateSettings);
+router.delete('/reset-data', protect, resetData);
 
 // Google Auth
 router.get('/google', passport.authenticate('google', {

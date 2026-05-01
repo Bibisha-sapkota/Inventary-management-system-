@@ -24,7 +24,25 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>Stock Inventory Management System</title>
+    <!-- Safety Patch for reCAPTCHA and Feature-Policy -->
+    <script>
+      // Mock reCAPTCHA to prevent "render is not a function" errors from third-party scripts
+      window.grecaptcha = window.grecaptcha || {
+        render: function(container, options) {
+          console.warn("reCAPTCHA render called on", container, "but script not fully loaded yet. Queuing or Ignoring.");
+          return "mock-id";
+        },
+        ready: function(cb) { cb(); }
+      };
+      
+      // Attempt to suppress Feature-Policy 'vibrate' warnings if scripts try to access it
+      if (typeof navigator !== 'undefined' && !navigator.vibrate) {
+        navigator.vibrate = function() { return false; };
+      }
+    </script>
+    <!-- Explicitly load reCAPTCHA to ensure it's available if needed -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
