@@ -1,16 +1,24 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { saveAuth } from '../utils/auth';
 import logo from "../images/logo.png";
 
 export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', role: 'customer' });
   const [error, setError] = useState('');
   const [agree, setAgree] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam === 'google_auth_failed') {
+      setError('Google Login Failed. If you chose Admin, ensure your account was created by a Superadmin.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,6 +34,11 @@ export default function Login() {
 
     try {
       const res = await api.post('/auth/login', form);
+
+      if (res.data.requiresOtp) {
+        navigate('/verify-login-otp', { state: { sessionToken: res.data.sessionToken } });
+        return;
+      }
 
       // Save Data (Handling flat response from backend)
       const userData = {
@@ -168,12 +181,10 @@ export default function Login() {
             Continue with Google
           </button>
 
-          {/* Footer Links */}
-          <div className="mt-8 text-center">
-            <Link to="/forgot-password" ocean className="text-sm font-bold text-[#00966D] hover:underline">Forgot password?</Link>
-            <p className="mt-4 text-sm text-slate-500 font-medium">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-[#00966D] font-bold hover:underline">Signup</Link>
+          <div className="mt-8 text-center space-y-3">
+            <Link to="/forgot-password" className="text-sm font-bold text-[#00966D] hover:underline">Forgot password?</Link>
+            <p className="text-sm text-slate-500">
+              Don't have an account? <Link to="/signup" className="font-bold text-[#00966D] hover:underline">Sign up</Link>
             </p>
           </div>
         </div>

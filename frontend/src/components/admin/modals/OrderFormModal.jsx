@@ -109,40 +109,28 @@ const OrderFormModal = ({
             onChange={(e) => {
               const selectedName = e.target.value;
               const foundProduct = products.find(p => p.name === selectedName);
+              let qty = orderFormData.quantity || 1;
+              if (foundProduct && qty > foundProduct.stock) {
+                qty = foundProduct.stock;
+              }
               setOrderFormData((prev) => ({
                 ...prev,
                 product: selectedName,
-                amount: foundProduct ? (foundProduct.price || prev.amount) : prev.amount
+                quantity: qty,
+                amount: foundProduct ? (foundProduct.price * qty) : prev.amount
               }));
             }}
             placeholder="Search or Type Product Name"
           />
           <datalist id="product-list">
-            {products.map(p => (
+            {products.filter(p => p.stock > 0).map(p => (
               <option key={p._id} value={p.name}>
                 {p.productId || "NO-ID"} | Stock: {p.stock} | Price: Rs.{p.price}
               </option>
             ))}
           </datalist>
         </div>
-        <div>
-          <label className={labelClass}>Status</label>
-          <select
-            className={inputClass}
-            value={orderFormData.status}
-            onChange={(e) =>
-              setOrderFormData((prev) => ({
-                ...prev,
-                status: e.target.value,
-              }))
-            }
-          >
-            <option value="Pending">Pending</option>
-            <option value="Completed">Completed</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-        </div>
+
         <div>
           <label className={labelClass}>Date</label>
           <input
@@ -157,19 +145,46 @@ const OrderFormModal = ({
             }
           />
         </div>
-        <div>
-          <label className={labelClass}>Amount (Rs.)</label>
-          <input
-            type="number"
-            className={inputClass}
-            value={orderFormData.amount}
-            onChange={(e) =>
-              setOrderFormData((prev) => ({
-                ...prev,
-                amount: e.target.value,
-              }))
-            }
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Quantity</label>
+            <input
+              type="number"
+              min="1"
+              className={inputClass}
+              value={orderFormData.quantity || 1}
+              onChange={(e) => {
+                let qty = parseInt(e.target.value) || 1;
+                if (qty < 1) qty = 1;
+                const foundProduct = products.find(p => p.name === orderFormData.product);
+                if (foundProduct && qty > foundProduct.stock) {
+                  alert(`⚠️ Only ${foundProduct.stock} units available in stock! Quantity has been capped.`);
+                  qty = foundProduct.stock;
+                }
+                const price = foundProduct ? foundProduct.price : 0;
+                setOrderFormData((prev) => ({
+                  ...prev,
+                  quantity: qty,
+                  amount: price * qty
+                }));
+              }}
+              placeholder="1"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Amount (Rs.)</label>
+            <input
+              type="number"
+              className={inputClass}
+              value={orderFormData.amount}
+              onChange={(e) =>
+                setOrderFormData((prev) => ({
+                  ...prev,
+                  amount: e.target.value,
+                }))
+              }
+            />
+          </div>
         </div>
       </div>
     </Modal>

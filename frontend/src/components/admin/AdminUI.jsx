@@ -81,6 +81,7 @@ export function Modal({
   showButtons = true,
   confirmText = "Save Changes",
   confirmDisabled = false,
+  loading = false,
 }) {
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -90,18 +91,18 @@ export function Modal({
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-300">
       <div
         className={`${darkMode
-          ? "bg-gray-800 text-white border border-gray-700"
-          : "bg-white text-gray-800"
-          } p-6 rounded-2xl ${maxWidth} w-full shadow-2xl max-h-[90vh] overflow-y-auto`}
+          ? "bg-gray-800 text-white border border-gray-700 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+          : "bg-white text-gray-800 shadow-[0_20px_50px_rgba(0,0,0,0.1)]"
+          } p-6 rounded-[2rem] ${maxWidth} w-full animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar`}
       >
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-extrabold uppercase">{title}</h3>
+          <h3 className="text-xl font-black uppercase tracking-tight">{title}</h3>
           <button
             onClick={onClose}
-            className="opacity-50 hover:opacity-100 transition"
+            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-500/10 transition-colors"
           >
             <X size={20} />
           </button>
@@ -111,7 +112,7 @@ export function Modal({
           <div className="flex justify-end gap-3 mt-8">
             <button
               onClick={onClose}
-              className={`px-4 py-2 rounded-lg font-bold text-sm ${darkMode
+              className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-95 ${darkMode
                 ? "bg-gray-700 hover:bg-gray-600"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
@@ -120,11 +121,16 @@ export function Modal({
             </button>
             <button
               onClick={onConfirm}
-              disabled={confirmDisabled}
-              className={`bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-600 transition shadow-md ${confirmDisabled ? "opacity-50 cursor-not-allowed" : ""
+              disabled={confirmDisabled || loading}
+              className={`bg-green-600 text-white px-8 py-2.5 rounded-xl font-black text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95 flex items-center gap-2 ${confirmDisabled || loading ? "opacity-50 cursor-not-allowed" : "hover:shadow-green-500/20"
                 }`}
             >
-              {confirmText}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : confirmText}
             </button>
           </div>
         )}
@@ -160,31 +166,32 @@ export function SettingsRow({ title, description, enabled, onToggle }) {
   );
 }
 
-export function Pagination({ currentPage, totalItems, pageSize, onPageChange, darkMode }) {
-  const totalPages = Math.ceil(totalItems / pageSize);
-  if (totalPages <= 1) return null;
+
+export function Pagination({ currentPage, totalItems, pageSize = 10, onPageChange, darkMode }) {
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
   return (
-    <div className={`flex items-center justify-end gap-2 px-6 py-4 border-t transition-colors ${darkMode ? 'border-gray-700 bg-gray-900/50' : 'border-gray-100 bg-white'} rounded-b-2xl`}>
-      <button 
-        onClick={() => onPageChange(currentPage - 1)} 
+    <div className={`flex items-center justify-end gap-2 px-6 py-4 border-t ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-b-2xl`}>
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
       >
         Previous
       </button>
       {[...Array(totalPages)].map((_, i) => (
-        <button 
+        <button
           key={i}
           onClick={() => onPageChange(i + 1)}
-          className={`w-10 h-10 rounded-xl text-sm font-bold transition-colors ${currentPage === i + 1 ? 'bg-blue-600 text-white shadow-sm border-blue-600' : `border ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}`}
+          className={`w-10 h-10 rounded-xl text-sm font-bold transition-colors ${currentPage === i + 1 ? 'bg-blue-600 text-white shadow-sm border-blue-600' : `${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'} border`}`}
         >
           {i + 1}
         </button>
       ))}
-      <button 
-        onClick={() => onPageChange(currentPage + 1)} 
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        className={`px-4 py-2 border rounded-xl text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${darkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
       >
         Next
       </button>

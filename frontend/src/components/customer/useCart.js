@@ -1,9 +1,7 @@
 // src/components/customer/useCart.js
 
 import { useState, useMemo } from "react";
-import { TAX_RATE, DISCOUNT_PERCENTAGE } from "./config";
-
-export function useCart() {
+export function useCart(taxRate = 13, discountRate = 0) {
   const [cart, setCart] = useState([]);
 
   const addToCart = (product) => {
@@ -84,8 +82,8 @@ export function useCart() {
     [selectedCart]
   );
 
-  const discountAmount = subtotal * DISCOUNT_PERCENTAGE;
-  const tax = (subtotal - discountAmount) * TAX_RATE;
+  const discountAmount = subtotal * (discountRate / 100);
+  const tax = (subtotal - discountAmount) * (taxRate / 100);
   const total = subtotal - discountAmount + tax;
 
   return {

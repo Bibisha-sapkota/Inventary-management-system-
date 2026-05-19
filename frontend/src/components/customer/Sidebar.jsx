@@ -1,5 +1,6 @@
 // src/components/customer/Sidebar.jsx
 
+import logo from "../../images/logo.png";
 import Icons from "./Icons";
 
 export default function Sidebar({ 
@@ -42,19 +43,19 @@ export default function Sidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 w-72 bg-slate-900 text-slate-300 transition-transform duration-300 z-50 transform ${
+        className={`fixed lg:static inset-y-0 left-0 w-72 bg-[#0B1120] text-slate-300 transition-transform duration-300 z-50 transform ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo Section */}
-          <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-              <Icons.Package className="w-6 h-6" />
+          <div className="p-8 flex items-center gap-4 border-b border-white/5">
+            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center p-2.5 shadow-inner">
+              <img src={logo} alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-white font-bold text-xl leading-none">Stockly</h1>
-              <p className="text-xs text-slate-500 mt-1 font-medium tracking-wider uppercase">
+              <h1 className="text-white font-black text-lg tracking-tight leading-none uppercase">Stock <span className="text-emerald-500">Inventory</span></h1>
+              <p className="text-[10px] text-slate-500 mt-1 font-black tracking-[0.2em] uppercase opacity-60">
                 Customer Portal
               </p>
             </div>

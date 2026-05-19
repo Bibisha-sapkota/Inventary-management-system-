@@ -12,9 +12,21 @@ const getSuppliers = async (req, res) => {
             return res.status(401).json({ success: false, message: 'User context missing' });
         }
 
-        // Superadmins see all suppliers, others only see their own
-        const query = req.user.role === 'superadmin' ? {} : { createdBy: req.user._id };
-        const suppliers = await Supplier.find(query).sort({ createdAt: -1 });
+        // Superadmins see all, Admins see only their own AND Superadmin-created (Global) suppliers
+        let query = {};
+        if (req.user.role !== 'superadmin') {
+            const User = require('../models/User');
+            const superadmins = await User.find({ role: 'superadmin' }).select('_id');
+            const superadminIds = superadmins.map(s => s._id);
+            query = { 
+                $or: [
+                    { createdBy: req.user._id },
+                    { createdBy: { $in: superadminIds } }
+                ]
+            };
+        }
+        
+        const suppliers = await Supplier.find(query).populate('createdBy', 'name email').sort({ createdAt: -1 });
         
         res.status(200).json({
             success: true,
@@ -114,10 +126,11 @@ const deleteSupplier = async (req, res) => {
 // @access  Private
 const getSupplierProducts = async (req, res) => {
     try {
-        const products = await Product.find({
-            supplier: req.params.id,
-            createdBy: req.user._id
-        }).select('name price stock category status supplierName');
+        const query = { supplier: req.params.id };
+        if (req.user.role !== 'superadmin') {
+            query.createdBy = req.user._id;
+        }
+        const products = await Product.find(query).select('name price stock category status supplierName');
 
         res.status(200).json({
             success: true,
@@ -133,10 +146,11 @@ const getSupplierProducts = async (req, res) => {
 // @access  Private
 const getSupplierLots = async (req, res) => {
     try {
-        const lots = await SupplierLot.find({
-            supplier: req.params.id,
-            createdBy: req.user._id
-        }).sort({ receivedDate: -1 });
+        const query = { supplier: req.params.id };
+        if (req.user.role !== 'superadmin') {
+            query.createdBy = req.user._id;
+        }
+        const lots = await SupplierLot.find(query).sort({ receivedDate: -1 });
 
         res.status(200).json({
             success: true,

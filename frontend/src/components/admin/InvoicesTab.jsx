@@ -17,7 +17,8 @@ const InvoicesTab = ({
   handlePrintInvoice,
   handleDeleteInvoice,
   currentPage,
-  onPageChange
+  onPageChange,
+  userRole
 }) => {
   const PAGE_SIZE = 10;
   const paginatedInvoices = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -159,7 +160,9 @@ const InvoicesTab = ({
                   </td>
                   <td className="py-3 px-4 border">{inv.date}</td>
                   <td className="py-3 px-4 border">
-                    {inv.itemsCount || inv.itemsList?.length || 0} items
+                    {(inv.itemsList && inv.itemsList.length > 0)
+                      ? inv.itemsList.reduce((sum, item) => sum + (item.qty || 0), 0)
+                      : (inv.itemsCount || 0)} items
                   </td>
                   <td className="py-3 px-4 border">
                     Rs. {Number(inv.totalAmount || inv.amount || 0).toFixed(2)}
@@ -184,13 +187,15 @@ const InvoicesTab = ({
                       >
                         <Printer size={16} />
                       </button>
-                      <button
-                        className="hover:text-red-500 transition-colors"
-                        onClick={() => handleDeleteInvoice(inv._id || inv.id || inv.invoiceId)}
-                        title="Delete Invoice"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {userRole === "superadmin" && (
+                        <button
+                          className="hover:text-red-500 transition-colors"
+                          onClick={() => handleDeleteInvoice(inv._id || inv.id || inv.invoiceId)}
+                          title="Delete Invoice"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

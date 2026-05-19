@@ -159,12 +159,14 @@ exports.createExchange = async (req, res) => {
     }
 };
 
-// @desc    Delete exchange record (doesn't undo stock changes by default)
-// @route   DELETE /api/exchanges/:id
-// @access  Private
 exports.deleteExchange = async (req, res) => {
     try {
-        const exchange = await Exchange.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+        let query = { _id: req.params.id };
+        if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+            query.user = req.user._id;
+        }
+
+        const exchange = await Exchange.findOneAndDelete(query);
         if (!exchange) return res.status(404).json({ success: false, message: 'Exchange not found' });
 
         res.status(200).json({ success: true, message: 'Exchange record removed' });

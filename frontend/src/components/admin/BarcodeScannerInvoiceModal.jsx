@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  X, 
-  Scan, 
-  Camera, 
-  Package, 
-  Plus 
+import {
+  X,
+  Scan,
+  Camera,
+  Package,
+  Plus
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { QRCodeCanvas } from "qrcode.react";
@@ -18,20 +18,63 @@ export default function BarcodeScannerInvoiceModal({
   taxRate = 0.13,
   defaultDiscountRate = 10,
   lowStockThreshold = 10,
+  userRole,
+  initialOrder = null,
+  loading = false
 }) {
   const [scanning, setScanning] = useState(false);
   const [barcode, setBarcode] = useState("");
   const [scannedProduct, setScannedProduct] = useState(null);
-  const [cart, setCart] = useState([]);
-  const [customerName, setCustomerName] = useState(profile?.name || "");
-  const [memberId, setMemberId] = useState("");
-  const [discountPercent, setDiscountPercent] = useState(
-    defaultDiscountRate
-  );
+  const [cart, setCart] = useState(() => {
+    if (initialOrder) {
+      const p = products.find(prod =>
+        (initialOrder.productId && prod._id === initialOrder.productId) ||
+        (prod.name && initialOrder.product && prod.name.toLowerCase().trim() === initialOrder.product.toLowerCase().trim())
+      );
+      if (p) {
+        return [{
+          cartKey: p._id || p.barcode || p.name,
+          product: p.name,
+          productId: p._id,
+          batchNo: p.batchNo || "N/A",
+          barcode: p.barcode || "",
+          price: (initialOrder.totalPrice != null ? Number(initialOrder.totalPrice) : Number(initialOrder.amount || 0)) / (initialOrder.quantity || 1) || p.price,
+          qty: initialOrder.quantity || 1,
+          maxStock: p.stock,
+          image: p.image,
+        }];
+      } else {
+        // Fallback: If product was deleted from inventory but exists in the order
+        return [{
+          cartKey: initialOrder.productId || initialOrder.product || "unknown-product",
+          product: initialOrder.product || "Unknown Product",
+          productId: initialOrder.productId || null,
+          batchNo: "N/A",
+          barcode: "",
+          price: (initialOrder.totalPrice != null ? Number(initialOrder.totalPrice) : Number(initialOrder.amount || 0)) / (initialOrder.quantity || 1) || 0,
+          qty: initialOrder.quantity || 1,
+          maxStock: 9999,
+          image: null,
+        }];
+      }
+    }
+    return [];
+  });
+  const [customerName, setCustomerName] = useState(initialOrder?.customerName || initialOrder?.customer?.name || (typeof initialOrder?.customer === 'string' ? initialOrder.customer : null) || profile?.name || "");
+  const [customerEmail, setCustomerEmail] = useState(initialOrder?.customerEmail || initialOrder?.customer?.email || "");
+  const [memberId, setMemberId] = useState(initialOrder?.customer?.membershipId || "");
+  const [discountPercent, setDiscountPercent] = useState(() => {
+    if (initialOrder) return 10;
+    const val = defaultDiscountRate;
+    return (val > 0 && val < 1) ? val * 100 : val;
+  });
 
-  const [taxPercent, setTaxPercent] = useState(taxRate * 100);
+  const [taxPercent, setTaxPercent] = useState(() => {
+    const val = taxRate;
+    return (val > 0 && val < 1) ? val * 100 : val;
+  });
   const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [isCustomerConfirmed, setIsCustomerConfirmed] = useState(false);
+  const [isCustomerConfirmed, setIsCustomerConfirmed] = useState(!!initialOrder);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [panNumber, setPanNumber] = useState("");
   const [addQuantity, setAddQuantity] = useState(1);
@@ -39,6 +82,15 @@ export default function BarcodeScannerInvoiceModal({
   useEffect(() => {
     setAddQuantity(1);
   }, [scannedProduct]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
 
   const handleScan = (decodedText) => {
     if (decodedText) {
@@ -148,9 +200,17 @@ export default function BarcodeScannerInvoiceModal({
 
   const updateQty = (cartKey, newQty) => {
     setCart(prev =>
-      prev.map((item) =>
-        item.cartKey === cartKey ? { ...item, qty: Math.max(1, newQty) } : item
-      )
+      prev.map((item) => {
+        if (item.cartKey === cartKey) {
+          const clampedQty = Math.max(1, newQty);
+          if (clampedQty > item.maxStock) {
+            alert(`⚠️ Only ${item.maxStock} units available in stock!`);
+            return { ...item, qty: item.maxStock };
+          }
+          return { ...item, qty: clampedQty };
+        }
+        return item;
+      })
     );
   };
 
@@ -181,8 +241,10 @@ export default function BarcodeScannerInvoiceModal({
     if (!isCustomerConfirmed) return alert("⚠️ Confirm customer first!");
 
     onSaveInvoice({
+      sourceOrderId: initialOrder?._id,
       customer: customerName,
       membershipId: memberId,
+      customerEmail: customerEmail,
       date: invoiceDate,
       items: cart,
       subtotal: subTotal,
@@ -273,14 +335,13 @@ export default function BarcodeScannerInvoiceModal({
                   />
                 </div>
                 <div className="w-1/2">
-                  <label className={labelClass}>Discount %</label>
+                  <label className={labelClass}>Customer Email</label>
                   <input
                     className={inputClass}
-                    type="number"
-                    value={discountPercent}
-                    onChange={(e) =>
-                      setDiscountPercent(Number(e.target.value))
-                    }
+                    type="email"
+                    placeholder="Email for Receipt"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
                     disabled={isCustomerConfirmed}
                   />
                 </div>
@@ -406,7 +467,10 @@ export default function BarcodeScannerInvoiceModal({
                           min="1"
                           max={scannedProduct.stock}
                           value={addQuantity}
-                          onChange={(e) => setAddQuantity(Math.max(1, Number(e.target.value)))}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setAddQuantity(Math.min(scannedProduct.stock, Math.max(1, val)));
+                          }}
                           className="w-16 text-center border rounded px-1 py-0.5"
                           style={{ backgroundColor: darkMode ? '#2d3748' : '#fff', color: darkMode ? '#fff' : '#000' }}
                         />
@@ -431,7 +495,7 @@ export default function BarcodeScannerInvoiceModal({
                 Quick Select:
               </p>
               <div className="flex flex-wrap gap-2">
-                {products.slice(0, 6).map((p, idx) => (
+                {products.filter(p => p.stock > 0).slice(0, 6).map((p, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
@@ -460,15 +524,16 @@ export default function BarcodeScannerInvoiceModal({
 
         {/* RIGHT - Invoice Preview */}
         <div
-          className={`w-1/2 p-6 flex flex-col ${darkMode ? "bg-gray-900" : "bg-gray-50"
+          className={`w-1/2 p-6 flex flex-col overflow-y-auto custom-scrollbar ${darkMode ? "bg-gray-900" : "bg-gray-50"
             }`}
+          style={{ maxHeight: '95vh' }}
         >
           <div className="text-center border-b pb-4 mb-3">
             <h1 className="text-xl font-extrabold tracking-wide uppercase">Stock Inventory Management System</h1>
             <p className="text-xs text-gray-500">Kathmandu, Nepal</p>
             <p className="text-xs text-gray-400">VAT No: 300142084 &nbsp;|&nbsp; PAN No: —</p>
             <div className={`mt-2 inline-block px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
-              Abbreviated Tax Invoice
+              Tax Invoice
             </div>
           </div>
 
@@ -493,10 +558,10 @@ export default function BarcodeScannerInvoiceModal({
             </div>
           </div>
 
-          {/* Cart */}
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-left border-collapse mb-4">
-              <thead>
+          {/* Cart List - Part of the main scrollable column now */}
+          <div className="mb-4 border-b border-gray-100 pb-2">
+            <table className="w-full text-left border-collapse">
+              <thead className="sticky top-0 bg-inherit z-10">
                 <tr className={`border-b-2 text-xs ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
                   <th className="py-2">Item</th>
                   <th className="py-2 text-center text-[9px] text-gray-400">Batch</th>
@@ -509,70 +574,36 @@ export default function BarcodeScannerInvoiceModal({
               <tbody>
                 {cart.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="py-8 text-center text-gray-400 text-sm"
-                    >
-                      Scan products to add
+                    <td colSpan={5} className="py-8 text-center text-gray-400 text-sm italic">
+                      Scan products to add to bill
                     </td>
                   </tr>
                 ) : (
                   cart.map((item, index) => (
-                    <tr
-                      key={index}
-                      className={`border-b text-sm ${darkMode ? "border-gray-700" : "border-gray-200"
-                        }`}
-                    >
-                      <td className="py-3">
+                    <tr key={index} className={`border-b text-sm ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+                      <td className="py-2">
                         <div className="flex items-center gap-2">
                           {item.image && (
-                            <img
-                              src={item.image}
-                              alt=""
-                              className="w-8 h-8 rounded object-cover"
-                            />
+                            <img src={item.image} alt="" className="w-6 h-6 rounded object-cover shadow-sm" />
                           )}
                           <div>
-                            <span className="text-sm font-semibold">{item.product}</span>
-                            {item.batchNo && <p className="text-[9px] text-gray-400 font-mono">{item.batchNo}</p>}
+                            <span className="text-xs font-bold leading-none">{item.product}</span>
+                            {item.batchNo && <p className="text-[8px] text-gray-400 font-mono">{item.batchNo}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 text-center text-[10px] text-gray-400 font-mono">{item.batchNo || '—'}</td>
-                      <td className="py-3 text-center">Rs. {item.price}</td>
-                      <td className="py-3 text-center">
+                      <td className="py-2 text-center text-[9px] text-gray-400 font-mono">{item.batchNo || '—'}</td>
+                      <td className="py-2 text-center text-xs">Rs. {item.price}</td>
+                      <td className="py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() =>
-                              updateQty(item.cartKey, item.qty - 1)
-                            }
-                            className="w-6 h-6 rounded bg-gray-200 text-gray-700 font-bold"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center">
-                            {item.qty}
-                          </span>
-                          <button
-                            onClick={() =>
-                              updateQty(item.cartKey, item.qty + 1)
-                            }
-                            className="w-6 h-6 rounded bg-gray-200 text-gray-700 font-bold"
-                          >
-                            +
-                          </button>
+                          <button onClick={() => updateQty(item.cartKey, item.qty - 1)} className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs">-</button>
+                          <span className="w-6 text-center text-xs font-bold">{item.qty}</span>
+                          <button onClick={() => updateQty(item.cartKey, item.qty + 1)} className="w-5 h-5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs">+</button>
                         </div>
                       </td>
-                      <td className="py-3 text-right font-medium">
-                        Rs. {(item.price * item.qty).toFixed(2)}
-                      </td>
-                      <td className="py-3 text-right">
-                        <button
-                          onClick={() => removeFromCart(item.cartKey)}
-                          className="text-red-500 font-bold"
-                        >
-                          ×
-                        </button>
+                      <td className="py-2 text-right font-bold text-xs">Rs. {(item.price * item.qty).toFixed(2)}</td>
+                      <td className="py-2 text-right">
+                        <button onClick={() => removeFromCart(item.cartKey)} className="text-red-500 hover:text-red-700">×</button>
                       </td>
                     </tr>
                   ))
@@ -581,31 +612,28 @@ export default function BarcodeScannerInvoiceModal({
             </table>
           </div>
 
-          {/* Totals */}
-          <div
-            className={`p-4 rounded-xl ${darkMode ? "bg-gray-800" : "bg-white"
-              } border ${darkMode ? "border-gray-700" : "border-gray-200"}`}
-          >
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2 mb-4">
+          {/* Totals - Compressed for visibility */}
+          <div className={`p-3 rounded-xl ${darkMode ? "bg-gray-800" : "bg-white"} border ${darkMode ? "border-gray-700" : "border-gray-200"} shadow-inner`}>
+            <div className="space-y-2">
+              <div className="flex gap-2 mb-2">
                 <div className="flex-1">
-                  <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Discount %</label>
+                  <label className="text-[8px] font-black uppercase text-slate-400 block">Disc %</label>
                   <input
                     type="number"
-                    className="w-full border border-gray-200 bg-white text-gray-800 p-2 rounded focus:ring-2 focus:ring-green-500 outline-none !py-1 text-xs"
+                    className={`w-full border border-gray-100 bg-gray-50/50 text-gray-800 p-1 rounded outline-none text-[10px] font-bold ${userRole !== 'superadmin' ? 'opacity-50' : ''}`}
                     value={discountPercent}
                     onChange={e => setDiscountPercent(Number(e.target.value))}
-                    style={darkMode ? {backgroundColor: '#374151', color: 'white', borderColor: '#4b5563'} : {}}
+                    disabled={userRole !== 'superadmin'}
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Tax %</label>
+                  <label className="text-[8px] font-black uppercase text-slate-400 block">Tax %</label>
                   <input
                     type="number"
-                    className="w-full border border-gray-200 bg-white text-gray-800 p-2 rounded focus:ring-2 focus:ring-green-500 outline-none !py-1 text-xs"
+                    className={`w-full border border-gray-100 bg-gray-50/50 text-gray-800 p-1 rounded outline-none text-[10px] font-bold ${userRole !== 'superadmin' ? 'opacity-50' : ''}`}
                     value={taxPercent}
                     onChange={e => setTaxPercent(Number(e.target.value))}
-                    style={darkMode ? {backgroundColor: '#374151', color: 'white', borderColor: '#4b5563'} : {}}
+                    disabled={userRole !== 'superadmin'}
                   />
                 </div>
               </div>
@@ -664,7 +692,7 @@ export default function BarcodeScannerInvoiceModal({
             </div>
           </div>
 
-          {(paymentMethod === 'eSewa' || paymentMethod === 'Khalti') && (
+          {cart.length > 0 && isCustomerConfirmed && (
             <div className="mt-4 bg-white p-3 rounded-2xl flex items-center justify-center gap-4 border border-slate-100 shadow-sm animate-in zoom-in duration-200">
               <div className="bg-slate-100 p-1 rounded-lg">
                 <QRCodeCanvas
@@ -674,24 +702,24 @@ export default function BarcodeScannerInvoiceModal({
                 />
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase">Scan to Pay</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase">Scan to Verify</p>
                 <p className="text-sm font-black text-slate-800">Rs. {grandTotal.toFixed(2)}</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase">{paymentMethod}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">{paymentMethod} Payment</p>
               </div>
             </div>
           )}
 
           <button
             onClick={handleCheckout}
-            disabled={!isCustomerConfirmed || cart.length === 0}
-            className={`mt-4 w-full py-3 rounded-xl font-bold text-lg shadow-lg ${isCustomerConfirmed && cart.length > 0
+            disabled={loading || !isCustomerConfirmed || cart.length === 0}
+            className={`mt-4 w-full py-3 rounded-xl font-bold text-lg shadow-lg ${loading ? "bg-gray-200 text-gray-400 cursor-not-allowed" : (isCustomerConfirmed && cart.length > 0
               ? "bg-green-600 text-white hover:bg-green-700"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed")
               }`}
           >
-            {isCustomerConfirmed
+            {loading ? "⌛ Processing..." : (isCustomerConfirmed
               ? "✅ Checkout & Generate Invoice"
-              : "⚠️ Confirm Customer First"}
+              : "⚠️ Confirm Customer First")}
           </button>
         </div>
       </div>

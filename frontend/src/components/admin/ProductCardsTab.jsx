@@ -1,5 +1,6 @@
 import React from "react";
 import { Upload, Package, Pencil, Trash2 } from "lucide-react";
+import { Pagination } from "./AdminUI";
 
 const ProductCardsTab = ({
   filteredProducts,
@@ -10,8 +11,12 @@ const ProductCardsTab = ({
   handleEditProduct,
   handleDeleteProduct,
   settings,
-  lowStockThreshold
+  lowStockThreshold,
+  currentPage,
+  onPageChange
 }) => {
+  const PAGE_SIZE = 12;
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   return (
     <div className={`${cardClass} rounded-2xl shadow-sm p-6 border-2`}>
       <div className="flex justify-between items-center mb-6">
@@ -36,9 +41,9 @@ const ProductCardsTab = ({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((p, i) => (
+        {paginatedProducts.map((p, i) => (
           <div
-            key={p._id || `product-${i}`}
+            key={p._id || `product-${(currentPage - 1) * PAGE_SIZE + i}`}
             className={`border-2 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group ${darkMode
               ? "bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 hover:border-purple-600/50"
               : "bg-white border-gray-200 hover:border-blue-400/60"
@@ -60,11 +65,9 @@ const ProductCardsTab = ({
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              {p.stock <= 0 && (
-                <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
-                  Out of Stock ⚠️
-                </span>
-              )}
+              <span className={`absolute top-3 right-3 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase ${p.stock > 100 ? 'bg-indigo-500' : p.stock >= 10 ? 'bg-emerald-500' : p.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                {p.stock > 100 ? 'High Stock' : p.stock >= 10 ? 'In Stock' : p.stock > 0 ? 'Low Stock' : 'Out of Stock ⚠️'}
+              </span>
               <span className={`absolute top-3 left-3 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${p.status === "Active" ? "bg-gradient-to-r from-emerald-500 to-green-600" : "bg-gray-500"}`}>
                 {p.status}
               </span>
@@ -133,7 +136,7 @@ const ProductCardsTab = ({
 
               <div className="flex gap-2 pt-2">
                 <button
-                  onClick={() => handleEditProduct(i)}
+                  onClick={() => handleEditProduct((currentPage - 1) * PAGE_SIZE + i)}
                   className="flex-1 px-3 py-2.5 rounded-lg bg-gradient-to-r from-orange-400 to-orange-500 text-white hover:from-orange-500 hover:to-orange-600 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg"
                 >
                   <Pencil size={14} /> Edit
@@ -148,6 +151,15 @@ const ProductCardsTab = ({
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-8">
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredProducts.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={onPageChange}
+          darkMode={darkMode}
+        />
       </div>
     </div>
   );

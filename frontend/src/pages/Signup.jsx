@@ -1,79 +1,70 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
-import logo from '../images/logo.png';
+import logo from "../images/logo.png";
 
 export default function Signup() {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'customer',
-  });
-
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'admin' });
+  const [error, setError] = useState('');
   const [agree, setAgree] = useState(false);
-  const [msg, setMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.password !== form.confirmPassword) {
-      setMsg('Passwords do not match');
+
+    if (!form.name || !form.email || !form.password) {
+      setError('All fields are required');
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setError('Password must be at least 6 characters long and include 1 uppercase, 1 lowercase, 1 number, and 1 special character.');
       return;
     }
     if (!agree) {
-      setMsg('Please agree to the terms');
+      setError('You must agree to the terms and conditions');
       return;
     }
 
     try {
-      const { confirmPassword, ...signupData } = form;
-      await api.post('/auth/signup', signupData);
-      setMsg('Account created! Redirecting...');
-      setTimeout(() => navigate('/login'), 2000);
+      const res = await api.post('/auth/signup', form);
+      if (res.data.requiresOtp) {
+        navigate('/verify-login-otp', { state: { sessionToken: res.data.sessionToken } });
+      }
     } catch (err) {
-      setMsg(err.response?.data?.message || 'Signup failed');
+      setError(err.response?.data?.message || 'Registration failed');
     }
   };
 
-  const handleGoogleLogin = () => {
+  const handleGoogleSignup = () => {
     window.location.href = 'http://localhost:5000/auth/google';
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-100 via-sky-50 to-emerald-50 px-4 py-12 font-sans relative">
-      <div className="w-full max-w-[480px]">
+      <div className="w-full max-w-[460px]">
         <div className="relative overflow-hidden rounded-[2.5rem] bg-white p-10 shadow-[0_35px_80px_rgba(15,23,42,0.12)] ring-1 ring-emerald-100">
-
-          {/* Top Bar - Exact Green from your image */}
+          
           <div className="absolute inset-x-0 top-0 h-2 bg-[#00966D]"></div>
 
-          {/* Logo Section */}
-          <div className="relative text-center mb-8">
-            <div className="mx-auto mb-4 flex items-center justify-center">
+          <div className="relative text-center mb-10">
+            <div className="mx-auto mb-6 flex items-center justify-center">
               <div className="p-2 rounded-2xl bg-white shadow-sm border border-slate-50">
-                <img
-                  src={logo}
-                  alt="Logo"
-                  className="h-16 w-16 object-contain"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://cdn-icons-png.flaticon.com/512/3067/3067451.png';
-                  }}
-                />
+                <img src={logo} alt="Logo" className="h-16 w-16 object-contain" />
               </div>
             </div>
-            {/* Heading - Exact Green from your image */}
+            
             <h1 className="text-3xl font-extrabold text-[#00966D] tracking-tight">Create Account</h1>
-            <p className="text-sm text-slate-500 font-medium">Join Stock Inventory today</p>
+            
+            {error ? (
+              <p className="mt-4 px-4 py-2 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-600 border border-rose-100">{error}</p>
+            ) : (
+              <p className="text-sm text-slate-500 font-medium mt-1">Join the Stock Inventory System</p>
+            )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5 w-full">
-            {/* Full Name */}
+          <form onSubmit={handleSubmit} className="space-y-6 w-full">
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Full Name</label>
               <input
@@ -82,89 +73,62 @@ export default function Signup() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
               />
             </div>
 
-            {/* Email */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Email</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Email Address</label>
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
               />
             </div>
 
-            {/* Role */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Role</label>
-              <div className="relative">
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="w-full cursor-pointer rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50 appearance-none"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-400">
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5l4 4 4-4" /></svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Password */}
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Min. 6 characters"
+                  placeholder="Create a password"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50 pr-14"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00966D]"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Confirm Password</label>
-              <div className="relative">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="Repeat password"
-                  value={form.confirmPassword}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  required
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00966D]"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                </button>
-              </div>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1.5 block">Account Type</label>
+              <select
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-medium text-slate-800 outline-none transition focus:border-[#00966D] focus:ring-4 focus:ring-emerald-50 cursor-pointer"
+              >
+                <option value="customer">Customer</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-600 transition hover:text-slate-800">
               <input
                 type="checkbox"
-                id="agree"
                 checked={agree}
                 onChange={(e) => setAgree(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-[#00966D] focus:ring-[#00966D]"
@@ -172,34 +136,34 @@ export default function Signup() {
               <span>I agree to the terms and conditions</span>
             </label>
 
-            {/* Button - Exact Green from your image */}
             <button
               type="submit"
               disabled={!agree}
-              className="w-full rounded-2xl bg-[#00966D] py-4 text-sm font-bold text-white transition hover:bg-[#00825e] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-100"
+              className="w-full rounded-2xl bg-[#00966D] py-4 text-sm font-bold text-white transition hover:bg-[#00825e] disabled:cursor-not-allowed disabled:opacity-50 shadow-lg shadow-emerald-100"
             >
               Create Account
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+          <div className="my-8 flex items-center gap-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">
             <div className="h-px flex-1 bg-slate-100"></div>
-            <span>OR</span>
+            <span>or sign up with</span>
             <div className="h-px flex-1 bg-slate-100"></div>
           </div>
 
           <button
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignup}
             type="button"
-            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+            className="w-full flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
           >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-4 w-4" alt="Google" />
-            Continue with Google
+            Sign up with Google
           </button>
 
-          <div className="mt-8 text-center text-sm text-slate-500 font-medium">
-            Already have an account?{' '}
-            <Link to="/login" className="font-bold text-[#00966D] hover:underline">Sign in</Link>
+          <div className="mt-8 text-center space-y-3">
+            <p className="text-sm text-slate-500">
+              Already have an account? <Link to="/login" className="font-bold text-[#00966D] hover:underline">Log in</Link>
+            </p>
           </div>
         </div>
       </div>

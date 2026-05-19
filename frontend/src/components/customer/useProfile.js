@@ -34,6 +34,7 @@ export function useProfile() {
           phone: u.phone || "",
           bio: u.bio || "",
           location: u.location || "",
+          status: u.status || "active",
           memberSince: new Date(u.createdAt).toLocaleDateString("en-US", {
             month: "long",
             year: "numeric",
@@ -42,6 +43,10 @@ export function useProfile() {
       }
     } catch (error) {
       console.error("Failed to fetch profile:", error);
+      // If the server returns 403 Forbidden, it likely means the user is blocked
+      if (error.response && error.response.status === 403) {
+        setProfile(prev => ({ ...prev, status: "blocked" }));
+      }
     }
   }, [token]);
 
@@ -127,5 +132,6 @@ export function useProfile() {
     saveProfile,
     isSaving,
     updateProfileField,
+    refreshProfile: fetchProfile
   };
 }

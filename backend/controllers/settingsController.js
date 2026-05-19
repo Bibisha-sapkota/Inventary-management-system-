@@ -1,4 +1,6 @@
 const SystemSettings = require('../models/SystemSettings');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // @desc    Get system settings
 // @route   GET /api/settings
@@ -35,6 +37,19 @@ exports.updateSettings = async (req, res) => {
                 runValidators: true
             });
         }
+
+        // Send Global Notification if banner was updated
+        if (req.body.discountBanner || req.body.bannerTitle) {
+            const customers = await User.find({ role: 'customer' });
+            const notifications = customers.map(c => ({
+                user: c._id,
+                title: req.body.bannerTitle || "New Promotion!",
+                message: "A new special discount banner has been published. Check your dashboard!",
+                type: "Promotion"
+            }));
+            await Notification.insertMany(notifications);
+        }
+
         res.status(200).json({
             success: true,
             data: settings

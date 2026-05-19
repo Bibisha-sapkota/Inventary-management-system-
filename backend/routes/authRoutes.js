@@ -18,12 +18,17 @@ const {
     getAllUsers,
     deleteUser,
     updateAnyUserRole,
-    updateUserStatus
+    updateUserStatus,
+    createUser,
+    verifyLoginOTP,
+    googleSignupComplete
 } = require('../controllers/authController');
 
 // Standard Auth
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/verify-login-otp', verifyLoginOTP);
+router.post('/google-signup-complete', googleSignupComplete);
 
 // Password Reset
 router.post('/forgot-password', forgotPassword);
@@ -40,6 +45,7 @@ router.delete('/reset-data', protect, resetData);
 
 // Superadmin Routes
 router.get('/users', protect, authorize('superadmin'), getAllUsers);
+router.post('/users', protect, authorize('superadmin'), createUser);
 router.delete('/users/:id', protect, authorize('superadmin'), deleteUser);
 router.put('/users/:id/role', protect, authorize('superadmin'), updateAnyUserRole);
 router.put('/users/:id/status', protect, authorize('superadmin'), updateUserStatus);
@@ -55,7 +61,34 @@ router.get('/google/callback',
         failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
         session: false 
     }),
-    (req, res) => {
+    async (req, res) => {
+        if (req.user.isNewGoogleUser) {
+            const tempToken = require('jsonwebtoken').sign({
+                email: req.user.email,
+                name: req.user.name,
+                googleId: req.user.googleId,
+                avatar: req.user.avatar
+            }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+            return res.redirect(`${process.env.FRONTEND_URL}/google-role-select?tempToken=${tempToken}`);
+        }
+        if (req.user.role === 'customer') {
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            const salt = await require('bcryptjs').genSalt(10);
+            req.user.loginOtp = await require('bcryptjs').hash(otp, salt);
+            req.user.loginOtpExpire = Date.now() + 10 * 60 * 1000;
+            await req.user.save();
+
+            await require('../utils/sendEmail')({
+                email: req.user.email,
+                subject: 'Your Login OTP',
+                message: `Your OTP for login is: ${otp}`
+            });
+
+            const sessionToken = require('jsonwebtoken').sign({ email: req.user.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
+            return res.redirect(`${process.env.FRONTEND_URL}/verify-login-otp?session=${sessionToken}`);
+        }
+
         const token = require('jsonwebtoken').sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
         // ⚠️ Check if user is NEW (Created within last 30 seconds)

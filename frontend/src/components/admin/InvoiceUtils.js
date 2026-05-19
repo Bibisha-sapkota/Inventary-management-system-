@@ -5,11 +5,11 @@ export const generateInvoiceHtml = (invoice, settings) => {
 
   const subtotal = invoice.subtotal || invoice.itemsList?.reduce((s, i) => s + i.qty * i.price, 0) || 0;
 
-  const discountRateUsed = typeof invoice.discountRate === 'number' ? invoice.discountRate : (settings?.defaultDiscountRate || 10);
-  const taxRateUsed = typeof invoice.taxRate === 'number' ? invoice.taxRate : (settings?.taxRate * 100);
+  const discountRateUsed = typeof invoice.discountRate === 'number' ? invoice.discountRate : (typeof invoice.discountPercent === 'number' ? invoice.discountPercent : (settings?.defaultDiscountRate || 0));
+  const taxRateUsed = typeof invoice.taxRate === 'number' ? invoice.taxRate : (typeof invoice.taxPercent === 'number' ? invoice.taxPercent : (settings?.taxRate * 100 || 0));
 
-  const discount = typeof invoice.discount === "number" ? invoice.discount : (subtotal * (discountRateUsed / 100));
-  const tax = typeof invoice.tax === "number" ? invoice.tax : ((subtotal - discount) * (taxRateUsed / 100));
+  const discount = typeof invoice.discount === "number" ? invoice.discount : (typeof invoice.discountAmount === "number" ? invoice.discountAmount : (subtotal * (discountRateUsed / 100)));
+  const tax = typeof invoice.tax === "number" ? invoice.tax : (typeof invoice.taxAmount === "number" ? invoice.taxAmount : ((subtotal - discount) * (taxRateUsed / 100)));
   const grandTotal = invoice.totalAmount || (subtotal - discount + tax);
   const totalQty = (invoice.itemsList || []).reduce((s, i) => s + (Number(i.qty) || 0), 0);
 
@@ -92,13 +92,14 @@ export const generateInvoiceHtml = (invoice, settings) => {
 </div>
 
 <!-- Title -->
-<div class="title-bar">⬥ Abbreviated Tax Invoice ⬥</div>
+<div class="title-bar">⬥ Tax Invoice ⬥</div>
 
 <!-- Meta Info Grid -->
 <div class="meta">
   <div class="meta-block">
     <div class="meta-label">Bill To (Customer)</div>
     <div class="meta-value green">${invoice.customer || "Walk-in Customer"}</div>
+    ${invoice.customerEmail ? `<div style="font-size: 11px; color: #666; margin-top: 2px;">${invoice.customerEmail}</div>` : ''}
   </div>
   <div class="meta-block">
     <div class="meta-label">Membership / Member ID</div>
@@ -225,22 +226,44 @@ export const handlePreviewInvoice = (invoice, settings) => {
   }
 };
 
-export const handleExportCSV = (products) => {
-  const headers = ["Name", "Category", "Price", "Stock", "Status", "Barcode"];
-  const rows = products.map(p => [
-    `"${p.name}"`, 
-    `"${p.category}"`, 
-    p.price, 
-    p.stock, 
-    `"${p.status}"`, 
-    `"${p.barcode}"`
-  ]);
+export const handleExportCSV = (data) => {
+  if (!Array.isArray(data)) {
+    console.error("handleExportCSV: Expected an array but received:", data);
+    return;
+  }
+  
+  if (data.length === 0) return;
+
+  // Detect if it's products or category report
+  const isCategoryReport = 'totalStock' in data[0];
+  
+  let headers, rows;
+  if (isCategoryReport) {
+    headers = ["Category", "Total Stock", "Product Count", "Inventory Value"];
+    rows = data.map(d => [
+      `"${d.category || ''}"`,
+      d.totalStock || 0,
+      d.productCount || 0,
+      d.inventoryValue || 0
+    ]);
+  } else {
+    headers = ["Name", "Category", "Price", "Stock", "Status", "Barcode"];
+    rows = data.map(p => [
+      `"${p.name || ''}"`, 
+      `"${p.category || ''}"`, 
+      p.price || 0, 
+      p.stock || 0, 
+      `"${p.status || ''}"`, 
+      `"${p.barcode || ''}"`
+    ]);
+  }
+
   const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "products_export.csv";
+  link.download = isCategoryReport ? "category_report.csv" : "products_export.csv";
   link.click();
 };
 

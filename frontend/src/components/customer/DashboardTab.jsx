@@ -3,11 +3,13 @@
 import React from "react";
 import Icons from "./Icons";
 
-export default function DashboardTab({ profile, cartCount, setActiveTab, recentOrders = [] }) {
+export default function DashboardTab({ profile, cartCount, setActiveTab, recentOrders = [], settings = {} }) {
   // Find the most recent active order for the Live Status tracker
   const activeOrder = recentOrders.find(
     (o) => o.status === "Pending" || o.status === "Processing" || o.status === "Shipped"
   ) || recentOrders[0];
+
+  const heroImage = "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80";
 
   return (
     <div className="space-y-10 pb-10 max-w-7xl mx-auto">
@@ -20,7 +22,7 @@ export default function DashboardTab({ profile, cartCount, setActiveTab, recentO
           {/* HERO SECTION */}
           <section className="relative rounded-2xl overflow-hidden shadow-sm h-[280px] flex items-center">
             <img 
-              src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80" 
+              src={heroImage} 
               alt="Fresh Groceries" 
               className="absolute inset-0 w-full h-full object-cover"
             />
@@ -32,7 +34,9 @@ export default function DashboardTab({ profile, cartCount, setActiveTab, recentO
               </span>
               <h1 className="text-3xl md:text-5xl font-extrabold text-white leading-tight">
                 Welcome back, <br />
-                <span className="text-emerald-400">{profile.name.split(" ")[0]}!</span>
+                <span className="text-emerald-400">
+                  {profile.name === "Loading..." ? "User" : profile.name.split(" ")[0]}!
+                </span>
               </h1>
               <p className="text-gray-200 mt-3 text-sm md:text-base max-w-md">
                 Manage your stock, track live deliveries, and order wholesale supplies seamlessly.

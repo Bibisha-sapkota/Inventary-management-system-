@@ -13,6 +13,8 @@ export const useAdminData = (token, navigate) => {
   const [exchanges, setExchanges] = useState([]);
   const [historyLogs, setHistoryLogs] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const fetchData = async () => {
     if (!token) return;
@@ -20,7 +22,7 @@ export const useAdminData = (token, navigate) => {
       setLoading(true);
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [pRes, oRes, iRes, sRes, cRes, nRes, exRes, hRes, setRes] = await Promise.all([
+      const [pRes, oRes, iRes, sRes, cRes, nRes, exRes, hRes, setRes, profRes] = await Promise.all([
         fetch(`${API_URL}/products`, { headers }),
         fetch(`${API_URL}/orders`, { headers }),
         fetch(`${API_URL}/invoices`, { headers }),
@@ -30,6 +32,7 @@ export const useAdminData = (token, navigate) => {
         fetch(`${API_URL}/exchanges`, { headers }),
         fetch(`${API_URL}/history`, { headers }),
         fetch(`${API_URL}/settings`, { headers }),
+        fetch(`${API_URL}/auth/profile`, { headers }),
       ]);
 
       const pData = await pRes.json();
@@ -41,7 +44,21 @@ export const useAdminData = (token, navigate) => {
       const exData = await exRes.json();
       const hData = await hRes.json();
       const setData = await setRes.json();
+      const profData = await profRes.json();
 
+      const responses = [pRes, oRes, iRes, sRes, cRes, nRes, exRes, hRes, setRes, profRes];
+      if (responses.some(res => res.status === 401)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return;
+      }
+
+      if (profRes.status === 403 || (profData && profData.status === 'blocked')) {
+        setIsBlocked(true);
+      } else if (profData) {
+        setProfile(profData);
+      }
       if (pData.success) setProducts(pData.data);
       if (oData.success) setOrders(oData.data);
       if (iData.success) setInvoices(iData.data);
@@ -144,6 +161,8 @@ export const useAdminData = (token, navigate) => {
     setHistoryLogs,
     settings,
     setSettings,
+    profile,
+    isBlocked,
     fetchData,
     fetchNotifications,
     fetchHistoryLogs

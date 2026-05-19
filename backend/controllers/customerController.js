@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const Order = require('../models/Order'); // 🛠️ Fix: Added missing import
-const { createNotificationInternal } = require('./notificationController');
+const { createNotificationInternal, notifySuperadmins } = require('./notificationController');
 const { logActivity } = require('../utils/logger');
 
 // @desc    Get all customers created by the admin
@@ -8,18 +8,21 @@ const { logActivity } = require('../utils/logger');
 // @access  Private
 exports.getCustomers = async (req, res) => {
     try {
-        // 1. Find all orders where this admin is the owner/seller
-        const orders = await Order.find({ user: req.user._id }).distinct('customerId');
+        let query = { role: 'customer' };
         
-        // 2. Find all users with role 'customer' OR who have placed an order for this admin
-        // We use $or to include both registered customers and any account (even other admins) 
-        // that acted as a customer.
-        const customers = await User.find({
-            $or: [
-                { role: 'customer' },
-                { _id: { $in: orders } }
-            ]
-        }).select('-password'); // Exclude passwords for safety
+        if (req.user.role !== 'superadmin') {
+            // Find all orders where this admin is the owner/seller
+            const orders = await Order.find({ user: req.user._id }).distinct('customerId');
+            query = {
+                role: 'customer',
+                $or: [
+                    { createdBy: req.user._id },
+                    { _id: { $in: orders } }
+                ]
+            };
+        }
+        
+        const customers = await User.find(query).select('-password');
         
         res.status(200).json({
             success: true,
@@ -62,11 +65,21 @@ exports.createCustomer = async (req, res) => {
             createdBy: req.user._id
         });
 
-        // Add internal notification
-        await createNotificationInternal(
-            req.user._id,
-            'New Customer Added',
-            `Customer ${name} (${email}) has been added to your system.`,
+        // Add internal notification (to admin)
+        if (req.user.role !== 'superadmin') {
+            await createNotificationInternal(
+                req.user._id,
+                'New Customer Added',
+                `Customer ${name} (${email}) has been added to your system.`,
+                'info',
+                'customer'
+            );
+        }
+
+        // Notify Superadmins
+        await notifySuperadmins(
+            'Global Customer Created',
+            `A new customer ${name} was added to the system by admin ${req.user.name}.`,
             'info',
             'customer'
         );

@@ -5,7 +5,12 @@ const Notification = require('../models/Notification');
 // @access  Private
 exports.getNotifications = async (req, res) => {
     try {
-        const notifications = await Notification.find({ user: req.user._id })
+        let query = { user: req.user._id };
+        
+        // Note: Superadmin now only sees notifications specifically assigned to them 
+        // to keep their dashboard clean from individual admin activity.
+
+        const notifications = await Notification.find(query)
             .sort({ createdAt: -1 })
             .limit(50);
 
@@ -86,5 +91,27 @@ exports.createNotificationInternal = async (userId, title, message, type = 'info
         });
     } catch (error) {
         console.error('Error creating notification:', error);
+    }
+};
+
+// Helper function to notify all superadmins
+exports.notifySuperadmins = async (title, message, type = 'info', category = 'system') => {
+    try {
+        const User = require('../models/User');
+        const superadmins = await User.find({ role: 'superadmin' });
+        
+        const notifications = superadmins.map(sa => ({
+            user: sa._id,
+            title,
+            message,
+            type,
+            category
+        }));
+
+        if (notifications.length > 0) {
+            await Notification.insertMany(notifications);
+        }
+    } catch (error) {
+        console.error('Error notifying superadmins:', error);
     }
 };

@@ -91,9 +91,9 @@ export default function CSVImportModal({ darkMode, onClose, onImport, existingPr
       const price = Math.max(0, parseFloat(product.price) || 0);
       const stock = Math.max(0, parseInt(product.stock) || 0);
 
-      const isDuplicate = existingProducts.some(
+      const isDuplicate = (existingProducts || []).some(
         (p) =>
-          p.name.toLowerCase() === product.name.toLowerCase() ||
+          p.name?.toLowerCase() === product.name?.toLowerCase() ||
           (product.barcode && p.barcode === product.barcode)
       );
 

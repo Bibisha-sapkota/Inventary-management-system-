@@ -14,6 +14,64 @@ const ProductFormModal = ({
   labelClass,
   inputClass
 }) => {
+  React.useEffect(() => {
+    if (showProductForm && !productFormData._id) {
+      setProductFormData((prev) => {
+        const updates = {};
+        if (!prev.batchNo) {
+          let prefix = 'A';
+          let number = 1;
+          
+          if (products && products.length > 0) {
+            const batchNumbers = products
+              .map(p => p.batchNo)
+              .filter(b => b && /^([A-Z])(\d+)$/.test(b));
+            
+            if (batchNumbers.length > 0) {
+              batchNumbers.sort((a, b) => {
+                const matchA = a.match(/^([A-Z])(\d+)$/);
+                const matchB = b.match(/^([A-Z])(\d+)$/);
+                const charA = matchA[1].charCodeAt(0);
+                const charB = matchB[1].charCodeAt(0);
+                const numA = parseInt(matchA[2], 10);
+                const numB = parseInt(matchB[2], 10);
+                
+                if (charA !== charB) return charB - charA;
+                return numB - numA;
+              });
+              
+              const highestBatch = batchNumbers[0];
+              const match = highestBatch.match(/^([A-Z])(\d+)$/);
+              let highestChar = match[1];
+              let highestNum = parseInt(match[2], 10);
+              
+              if (highestNum >= 99) {
+                highestChar = String.fromCharCode(highestChar.charCodeAt(0) + 1);
+                highestNum = 1;
+              } else {
+                highestNum += 1;
+              }
+              prefix = highestChar;
+              number = highestNum;
+            }
+          }
+          updates.batchNo = `${prefix}${number}`;
+        }
+        if (!prev.productId) {
+          const nextNum = (products?.length || 0) + 1;
+          updates.productId = `PRD-${String(nextNum).padStart(3, "0")}`;
+        }
+        if (!prev.barcode) {
+          updates.barcode = updates.productId || prev.productId;
+        }
+        if (Object.keys(updates).length > 0) {
+          return { ...prev, ...updates };
+        }
+        return prev;
+      });
+    }
+  }, [showProductForm, productFormData._id, products, setProductFormData]);
+
   if (!showProductForm) return null;
 
   return (
@@ -83,7 +141,7 @@ const ProductFormModal = ({
               className={`${inputClass} !rounded-xl !border-2 !border-orange-300 dark:!border-orange-700`}
               value={productFormData.batchNo || ""}
               onChange={(e) => setProductFormData({ ...productFormData, batchNo: e.target.value })}
-              placeholder="e.g. BATCH-2026"
+              placeholder="e.g. A1"
             />
           </div>
         </div>

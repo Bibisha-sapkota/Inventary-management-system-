@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Search, 
   Receipt, 
@@ -8,8 +8,35 @@ import {
   Bell, 
   Settings, 
   User,
-  RefreshCw 
+  RefreshCw,
+  Menu,
+  LayoutDashboard,
+  ShieldCheck,
+  Package,
+  ShoppingCart,
+  Truck,
+  FileText,
+  RotateCw,
+  Activity,
+  Image as ImageIcon,
+  X
 } from "lucide-react";
+
+// All searchable nav items — icon + label + tab id + optional keywords
+const NAV_ITEMS = [
+  { id: "dashboard",       label: "Overview",          icon: LayoutDashboard, keywords: ["home", "dashboard", "overview", "summary"] },
+  { id: "usermanagement",  label: "User Management",   icon: ShieldCheck,     keywords: ["user", "admin", "management", "accounts", "block"] },
+  { id: "products",        label: "Products",          icon: Package,         keywords: ["product", "stock", "inventory", "sku", "catalog", "item"] },
+  { id: "orders",          label: "Orders",            icon: ShoppingCart,    keywords: ["order", "purchase", "cart", "sale"] },
+  { id: "invoices",        label: "Invoices",          icon: Receipt,         keywords: ["invoice", "bill", "payment", "receipt", "financial"] },
+  { id: "suppliers",       label: "Suppliers",         icon: Truck,           keywords: ["supplier", "vendor", "supply", "network"] },
+  { id: "exchanges",       label: "Exchanges",         icon: RotateCw,        keywords: ["exchange", "return", "refund", "replace"] },
+  { id: "reports",         label: "Reports",           icon: FileText,        keywords: ["report", "analytics", "export", "performance"] },
+  { id: "notifications",   label: "Notifications",     icon: Bell,            keywords: ["notification", "alert", "message"] },
+  { id: "promotions",      label: "Banner Promotion",  icon: ImageIcon,       keywords: ["banner", "promotion", "promo", "advertise", "image"] },
+  { id: "activityhistory", label: "Activity History",  icon: Activity,        keywords: ["activity", "history", "log", "audit"] },
+  { id: "settings",        label: "System Settings",   icon: Settings,        keywords: ["setting", "config", "system", "preference"] },
+];
 
 const Header = ({
   darkMode,
@@ -26,29 +53,189 @@ const Header = ({
   handleMarkAllNotificationsRead,
   handleNotificationClick,
   switchTab,
-  setShowScannerInvoice
+  setShowScannerInvoice,
+  setSidebarOpen
 }) => {
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const searchRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Filter nav items based on search term
+  const filteredItems = sidebarSearchTerm.trim().length > 0
+    ? NAV_ITEMS.filter(item => {
+        const q = sidebarSearchTerm.toLowerCase();
+        return (
+          item.label.toLowerCase().includes(q) ||
+          item.keywords.some(k => k.includes(q))
+        );
+      })
+    : [];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        searchRef.current && !searchRef.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
+      ) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearchChange = (e) => {
+    setSidebarSearchTerm(e.target.value);
+    setShowSearchDropdown(true);
+    setSelectedIndex(-1);
+  };
+
+  const handleSelectItem = (item) => {
+    switchTab(item.id);
+    setSidebarSearchTerm("");
+    setShowSearchDropdown(false);
+    setSelectedIndex(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!showSearchDropdown || filteredItems.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      e.preventDefault();
+      handleSelectItem(filteredItems[selectedIndex]);
+    } else if (e.key === "Escape") {
+      setShowSearchDropdown(false);
+      setSidebarSearchTerm("");
+    }
+  };
+
   return (
-    <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 transition-all sticky top-0 z-20">
+    <header className={`flex justify-between items-center mb-8 p-4 rounded-2xl transition-all sticky top-0 z-20 ${
+      darkMode 
+        ? "bg-[#1E293B] border border-white/5 shadow-2xl shadow-black/50 backdrop-blur-xl" 
+        : "bg-white/80 border border-gray-100 shadow-sm backdrop-blur-md"
+    }`}>
       <div className="flex items-center gap-6 flex-1">
-        <div className="relative group flex items-center flex-1 max-w-2xl">
+        <button 
+          onClick={() => setSidebarOpen(true)}
+          className="lg:hidden p-3 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 transition-all"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Search bar with live dropdown */}
+        <div className="relative flex items-center flex-1 max-w-2xl" ref={searchRef}>
           <Search
-            className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 opacity-60 group-focus-within:opacity-100 group-focus-within:text-green-600 transition-all z-10"
+            className={`absolute left-5 top-1/2 -translate-y-1/2 transition-all z-10 ${
+              showSearchDropdown && sidebarSearchTerm
+                ? "text-emerald-500 opacity-100"
+                : "text-gray-400 opacity-60"
+            }`}
             size={18}
           />
           <input
             type="text"
             placeholder="Search dashboard, orders, products, invoices, customers..."
             value={sidebarSearchTerm}
-            onChange={(e) => setSidebarSearchTerm(e.target.value)}
-            className={`pl-14 pr-20 py-3.5 rounded-xl border border-gray-100 focus:outline-none focus:ring-4 focus:ring-green-500/10 w-full shadow-inner transition-all ${darkMode
+            onChange={handleSearchChange}
+            onFocus={() => sidebarSearchTerm && setShowSearchDropdown(true)}
+            onKeyDown={handleKeyDown}
+            className={`pl-14 pr-20 py-3.5 rounded-xl border focus:outline-none focus:ring-4 w-full shadow-inner transition-all ${
+              showSearchDropdown && filteredItems.length > 0
+                ? "rounded-b-none border-emerald-300 focus:ring-emerald-500/10"
+                : "border-gray-100 focus:ring-green-500/10"
+            } ${darkMode
               ? "bg-gray-900/50 text-white placeholder:text-gray-600"
               : "bg-gray-50 text-gray-800 placeholder:text-gray-400"
-              }`}
+            }`}
           />
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white px-3 py-1.5 rounded-lg text-[10px] font-black text-gray-400 shadow-sm border border-gray-100 pointer-events-none uppercase tracking-tighter">
-            Enter
-          </div>
+          {sidebarSearchTerm ? (
+            <button
+              onClick={() => { setSidebarSearchTerm(""); setShowSearchDropdown(false); }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+            >
+              <X size={14} />
+            </button>
+          ) : (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-white px-3 py-1.5 rounded-lg text-[10px] font-black text-gray-400 shadow-sm border border-gray-100 pointer-events-none uppercase tracking-tighter">
+              Enter
+            </div>
+          )}
+
+          {/* Live search results dropdown */}
+          {showSearchDropdown && sidebarSearchTerm.trim().length > 0 && (
+            <div
+              ref={dropdownRef}
+              className={`absolute top-full left-0 right-0 rounded-b-xl border border-t-0 shadow-2xl z-50 overflow-hidden ${
+                darkMode
+                  ? "bg-[#1E293B] border-white/10"
+                  : "bg-white border-gray-200"
+              }`}
+            >
+              {filteredItems.length === 0 ? (
+                <div className={`px-5 py-4 text-xs font-bold flex items-center gap-3 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                  <Search size={14} />
+                  No results for &quot;{sidebarSearchTerm}&quot;
+                </div>
+              ) : (
+                <>
+                  <div className={`px-4 pt-3 pb-1 text-[9px] font-black uppercase tracking-widest ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                    Navigate to
+                  </div>
+                  {filteredItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const isSelected = idx === selectedIndex;
+                    return (
+                      <button
+                        key={item.id}
+                        onMouseDown={(e) => { e.preventDefault(); handleSelectItem(item); }}
+                        onMouseEnter={() => setSelectedIndex(idx)}
+                        className={`flex items-center gap-3 w-full px-5 py-3 text-sm font-bold transition-all text-left ${
+                          isSelected
+                            ? darkMode
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : "bg-emerald-50 text-emerald-600"
+                            : darkMode
+                              ? "text-gray-300 hover:bg-white/5"
+                              : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isSelected
+                            ? "bg-emerald-500 text-white"
+                            : darkMode ? "bg-white/10 text-gray-400" : "bg-gray-100 text-gray-500"
+                        }`}>
+                          <Icon size={14} />
+                        </span>
+                        <span>{item.label}</span>
+                        {isSelected && (
+                          <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                            darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600"
+                          }`}>
+                            ↵ Go
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  <div className={`px-5 py-2 text-[9px] font-bold border-t flex items-center gap-2 ${
+                    darkMode ? "border-white/5 text-gray-600" : "border-gray-100 text-gray-400"
+                  }`}>
+                    <kbd className={`px-1.5 py-0.5 rounded text-[8px] border ${darkMode ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-100 border-gray-200 text-gray-500"}`}>↑↓</kbd> navigate &nbsp;
+                    <kbd className={`px-1.5 py-0.5 rounded text-[8px] border ${darkMode ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-100 border-gray-200 text-gray-500"}`}>↵</kbd> select &nbsp;
+                    <kbd className={`px-1.5 py-0.5 rounded text-[8px] border ${darkMode ? "bg-gray-800 border-gray-700 text-gray-500" : "bg-gray-100 border-gray-200 text-gray-500"}`}>Esc</kbd> close
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <button
@@ -147,9 +334,7 @@ const Header = ({
                     notifications.slice(0, 15).map((n) => (
                       <div
                         key={n.id}
-                        onClick={() => {
-                          handleNotificationClick(n);
-                        }}
+                        onClick={() => { handleNotificationClick(n); }}
                         className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-green-50 dark:hover:bg-green-600/10 cursor-pointer transition-colors group relative ${n.unread ? (darkMode ? 'bg-green-900/10' : 'bg-green-50/50') : ''}`}
                       >
                         {n.unread && (

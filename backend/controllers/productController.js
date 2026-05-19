@@ -8,20 +8,31 @@ const getAllProducts = async (req, res) => {
     try {
         const { search, category, status, page = 1, limit = 50 } = req.query;
 
-        let query = {};
-        
+        // Build base visibility filter
+        let baseFilter = {};
         if (req.user.role === 'admin') {
-            query.createdBy = req.user._id;
+            baseFilter.$or = [
+                { createdBy: req.user._id },
+                { isGlobal: true }
+            ];
         }
 
-        if (search) {
-            query.name = { $regex: search, $options: 'i' };
-        }
-        if (category) {
-            query.category = category;
-        }
-        if (status) {
-            query.status = status;
+        // Build additional filters
+        let extraFilters = {};
+        if (search) extraFilters.name = { $regex: search, $options: 'i' };
+        if (category) extraFilters.category = category;
+        if (status) extraFilters.status = status;
+
+        // Combine using $and if both parts exist
+        let query = {};
+        const hasBase = Object.keys(baseFilter).length > 0;
+        const hasExtra = Object.keys(extraFilters).length > 0;
+        if (hasBase && hasExtra) {
+            query = { $and: [baseFilter, extraFilters] };
+        } else if (hasBase) {
+            query = baseFilter;
+        } else {
+            query = extraFilters;
         }
 
         const products = await Product.find(query)
@@ -75,6 +86,10 @@ const getProduct = async (req, res) => {
 // Create Product
 const createProduct = async (req, res) => {
     try {
+        // Mark as global if created by superadmin
+        if (req.user.role === 'superadmin') {
+            req.body.isGlobal = true;
+        }
         req.body.createdBy = req.user._id;
         const product = await Product.create(req.body);
 
@@ -210,13 +225,18 @@ const deleteProduct = async (req, res) => {
 // Get Stats
 const getStats = async (req, res) => {
     try {
-        const totalProducts = await Product.countDocuments({ createdBy: req.user._id });
-        const unactiveProducts = await Product.countDocuments({ status: 'Unactive', createdBy: req.user._id });
-        const activeProducts = await Product.countDocuments({ status: 'Active', createdBy: req.user._id });
+        let query = {};
+        if (req.user.role === 'admin') {
+            query.$or = [{ createdBy: req.user._id }, { isGlobal: true }];
+        }
+        
+        const totalProducts = await Product.countDocuments(query);
+        const unactiveProducts = await Product.countDocuments({ ...query, status: 'Unactive' });
+        const activeProducts = await Product.countDocuments({ ...query, status: 'Active' });
 
         const totalValue = await Product.aggregate([
             {
-                $match: { createdBy: req.user._id }
+                $match: query
             },
             {
                 $group: {
@@ -251,7 +271,8 @@ const createProductsBatch = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Expected an array of products' });
         }
         
-        const productsWithUser = products.map(p => ({ ...p, createdBy: req.user._id }));
+        const isGlobal = req.user.role === 'superadmin';
+        const productsWithUser = products.map(p => ({ ...p, createdBy: req.user._id, isGlobal }));
         const createdProducts = await Product.insertMany(productsWithUser);
 
         res.status(201).json({

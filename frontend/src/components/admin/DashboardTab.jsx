@@ -73,6 +73,14 @@ const DashboardTab = ({
     );
   };
 
+  // Inventory Financials Calculation
+  let totalBuy = 0; let totalSell = 0;
+  (products || []).forEach(p => {
+    totalBuy += (Number(p.stock) || 0) * (Number(p.buyingPrice) || Number(p.price) || 0);
+    totalSell += (Number(p.stock) || 0) * (Number(p.price) || 0);
+  });
+  const expectedProfit = totalSell - totalBuy;
+
   return (
     <div className="space-y-8">
       <div
@@ -82,8 +90,8 @@ const DashboardTab = ({
         }}
       >
         <div className="relative z-10">
-          <h2 className="text-3xl font-extrabold mb-2 uppercase">
-            Welcome back, {profile.name}!
+          <h2 className="text-3xl font-extrabold mb-2 uppercase text-gray-900">
+            Welcome back, <span className="text-emerald-600">{profile?.role || 'Admin'} {profile?.name || 'User'}!</span>
           </h2>
           <p className="opacity-90">
             Here's what's happening with your store today.
@@ -91,39 +99,14 @@ const DashboardTab = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           label="Total Products"
           value={products.length}
           gradient="bg-blue-50"
           icon={<Package size={24} />}
         />
-        <StatCard
-          label="Total Orders"
-          value={orders.length}
-          gradient="bg-emerald-50"
-          icon={<ShoppingCart size={24} />}
-        />
-        <StatCard
-          label="Total Invoices"
-          value={invoices.length}
-          gradient="bg-emerald-50"
-          icon={<Receipt size={24} />}
-        />
-        <StatCard
-          label="Total Customers"
-          value={customers.length}
-          gradient="bg-emerald-50"
-          icon={<Users size={24} />}
-        />
-        <StatCard
-          label="Total Suppliers"
-          value={suppliers.length}
-          gradient="bg-emerald-50"
-          icon={<Truck size={24} />}
-        />
 
-        {/* Second Row */}
         <StatCard
           label="Total Revenue"
           value={`Rs. ${totalRevenue.toLocaleString()}`}
@@ -131,17 +114,12 @@ const DashboardTab = ({
           icon={<DollarSign size={24} />}
         />
         <StatCard
-          label="Active Products"
-          value={activeProductsCount}
-          gradient="bg-emerald-50"
-          icon={<TrendingUp size={24} />}
-        />
-        <StatCard
-          label="Unactive Products"
-          value={unactiveProductsCount}
+          label="Low Stock Items"
+          value={products.filter(p => p.stock <= 10 && p.stock > 0).length}
           gradient="bg-rose-50"
-          icon={<AlertCircle size={24} />}
+          icon={<AlertCircle size={24} className="text-rose-500" />}
         />
+
         <StatCard
           label="Expiry Soon"
           value={expirySoonProducts.length}
@@ -283,15 +261,36 @@ const DashboardTab = ({
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: darkMode ? "#1F2937" : "#fff",
+                    backgroundColor: darkMode ? "#1F2937" : "#ffffff",
                     borderColor: "transparent",
+                    borderRadius: "16px",
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                    border: "none",
+                    padding: "12px",
+                    fontFamily: "sans-serif"
                   }}
+                  itemStyle={{
+                    color: "#22c55e",
+                    fontSize: "12px",
+                    fontWeight: "800"
+                  }}
+                  labelStyle={{
+                    color: darkMode ? "#9ca3af" : "#4b5563",
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    marginBottom: "4px"
+                  }}
+                  formatter={(val) => [`Rs. ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Sales Amount"]}
+                  labelFormatter={(label) => `Date: ${label}`}
                 />
                 <Area
                   type="monotone"
                   dataKey="uv"
                   stroke="#22c55e"
-                  strokeWidth={3}
+                  strokeWidth={3.5}
+                  activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2, fill: '#fff' }}
                   fillOpacity={1}
                   fill="url(#colorUv)"
                 />
@@ -352,8 +351,7 @@ const DashboardTab = ({
                   data={categoryPieData}
                   cx="50%"
                   cy="50%"
-                  labelLine={true}
-                  label={renderCustomizedLabel}
+                  labelLine={false}
                   outerRadius={85}
                   paddingAngle={2}
                   dataKey="value"

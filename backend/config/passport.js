@@ -28,40 +28,31 @@ passport.use(new GoogleStrategy({
         // Check if user exists with Google ID
         let user = await User.findOne({ googleId: profile.id });
 
+        if (!user) {
+            user = await User.findOne({ email: profile.emails[0].value });
+        }
+
         if (user) {
-            console.log('✅ Existing Google user found');
+            console.log('✅ Existing user found');
+            if (!user.googleId) {
+                user.googleId = profile.id;
+                user.isGoogleUser = true;
+                user.avatar = profile.photos[0]?.value || '';
+            }
             user.lastLogin = new Date();
             await user.save();
             return done(null, user);
         }
 
-        // Check if email already exists
-        user = await User.findOne({ email: profile.emails[0].value });
-
-        if (user) {
-            console.log('✅ Linking Google to existing account');
-            user.googleId = profile.id;
-            user.isGoogleUser = true;
-            user.avatar = profile.photos[0]?.value || '';
-            user.lastLogin = new Date();
-            await user.save();
-            return done(null, user);
-        }
-
-        // Create new user
-        console.log('✅ Creating new Google user');
-        const newUser = await User.create({
-            name: profile.displayName,
-            email: profile.emails[0].value,
-            googleId: profile.id,
-            isGoogleUser: true,
-            avatar: profile.photos[0]?.value || '',
-            role: 'customer',
-            isVerified: true,
-            lastLogin: new Date()
+        // IF WE REACH HERE, NO ACCOUNT EXISTS
+        console.log('✅ No account exists. Preparing for Role Selection.');
+        return done(null, { 
+            isNewGoogleUser: true, 
+            email: profile.emails[0].value, 
+            name: profile.displayName, 
+            googleId: profile.id, 
+            avatar: profile.photos[0]?.value || '' 
         });
-
-        done(null, newUser);
 
     } catch (error) {
         console.error('❌ Google Auth Error:', error);

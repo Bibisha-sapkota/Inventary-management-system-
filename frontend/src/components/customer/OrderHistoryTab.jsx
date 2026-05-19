@@ -18,7 +18,7 @@ export default function OrderHistoryTab({ orders, isLoading, refreshOrders, canc
     return matchesStatus && matchesSearch;
   });
 
-  const statuses = ["All", "Pending", "Processing", "Shipped", "Delivered", "Completed", "Cancelled"];
+  const statuses = ["All", "Pending", "Processing", "Shipped", "Delivered", "Completed", "Invoiced", "Cancelled"];
 
   return (
     <div className="space-y-6">
@@ -106,9 +106,6 @@ export default function OrderHistoryTab({ orders, isLoading, refreshOrders, canc
                   <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="text-center px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
                   <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
@@ -143,9 +140,6 @@ export default function OrderHistoryTab({ orders, isLoading, refreshOrders, canc
                         Rs. {order.amount?.toLocaleString()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <StatusBadge status={order.status} />
-                    </td>
                     <td className="px-6 py-4">
                       <span className="text-gray-600">{order.date}</span>
                     </td>
@@ -158,15 +152,7 @@ export default function OrderHistoryTab({ orders, isLoading, refreshOrders, canc
                         >
                           <Icons.Eye className="w-4 h-4" />
                         </button>
-                        {(order.status === "Pending" || order.status === "Processing") && (
-                          <button
-                            onClick={() => cancelOrder(order.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Cancel Order"
-                          >
-                            <Icons.X className="w-4 h-4" />
-                          </button>
-                        )}
+
                       </div>
                     </td>
                   </tr>
@@ -256,12 +242,6 @@ function OrderDetailModal({ order, onClose }) {
 
           <hr className="border-gray-200" />
 
-          {/* Total */}
-          <div className="flex justify-between items-center text-lg font-bold">
-            <span className="text-gray-800">Total Amount</span>
-            <span className="text-emerald-600">Rs. {order.amount?.toLocaleString()}</span>
-          </div>
-
           {/* Status Timeline */}
           <div className="pt-4">
             <p className="text-sm text-gray-500 mb-3">Order Progress</p>
@@ -288,7 +268,7 @@ function OrderTimeline({ status }) {
   const steps = ["Pending", "Processing", "Shipped", "Delivered"];
   const currentIndex = steps.indexOf(status);
   const isCancelled = status === "Cancelled";
-  const isCompleted = status === "Completed";
+  const isCompleted = status === "Completed" || status === "Invoiced";
 
   if (isCancelled) {
     return (

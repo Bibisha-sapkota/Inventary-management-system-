@@ -4,10 +4,13 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const passport = require('passport');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Import Passport Config
 require('./config/passport');
+
+const User = require('./models/User');
 
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
@@ -47,8 +50,50 @@ app.use(passport.session());
 // ========================
 // DATABASE CONNECTION
 // ========================
+const createRootSuperadmin = async () => {
+    const email = process.env.ROOT_SUPERADMIN_EMAIL;
+    const password = process.env.ROOT_SUPERADMIN_PASSWORD;
+    const name = process.env.ROOT_SUPERADMIN_NAME || 'Root Superadmin';
+
+    if (!email || !password) {
+        return;
+    }
+
+    const existing = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    if (existing) {
+        let updated = false;
+        if (existing.role !== 'superadmin') {
+            existing.role = 'superadmin';
+            updated = true;
+            console.log(`⚠️ Promoted existing user ${email} to 'superadmin'.`);
+        }
+        if (!existing.password) {
+            existing.password = await bcrypt.hash(password, 12);
+            updated = true;
+            console.log(`✅ Set manual password for existing root superadmin ${email}.`);
+        }
+        if (updated) {
+            await existing.save();
+        }
+        return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await User.create({
+        name,
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        role: 'superadmin',
+        isVerified: true
+    });
+    console.log(`✅ Created root superadmin account for ${email}`);
+};
+
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('✅ MongoDB Connected Successfully'))
+    .then(async () => {
+        console.log('✅ MongoDB Connected Successfully');
+        await createRootSuperadmin();
+    })
     .catch(err => console.log('❌ MongoDB Error:', err));
 
 // ========================
@@ -90,7 +135,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Background Jobs Disabled: Emails now only trigger on manual Product/Order updates as requested.
+// Background Jobs Disabled: Emails only trigger on manual Product/Order updates as requested.
 // const startDailyAlertJob = require('./jobs/dailyAlertJob');
 // startDailyAlertJob();
 

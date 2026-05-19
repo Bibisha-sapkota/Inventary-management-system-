@@ -9,6 +9,7 @@ export const STATUS_CONFIG = {
   Shipped: { bg: "bg-green-100", text: "text-green-700", dot: "bg-green-400" },
   Delivered: { bg: "bg-green-100", text: "text-green-700", dot: "bg-green-500" },
   Completed: { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
+  Invoiced: { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500" },
   Cancelled: { bg: "bg-red-100", text: "text-red-700", dot: "bg-red-500" },
 };
 
@@ -87,4 +88,6 @@ export const INITIAL_SETTINGS = {
   twoFactorAuth: true,
   language: "English",
   currency: "NPR",
+  taxRate: 13,        // default matches SystemSettings backend default
+  defaultDiscount: 0, // superadmin sets this; 0 until fetched
 };

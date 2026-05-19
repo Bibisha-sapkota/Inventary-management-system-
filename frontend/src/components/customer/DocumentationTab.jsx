@@ -41,7 +41,7 @@ export default function DocumentationTab() {
       <div className="grid sm:grid-cols-3 gap-4">
         {[
           { icon: "💬", title: "Live Chat", desc: "Chat with our support team" },
-          { icon: "📧", title: "Email Support", desc: "support@stockly.com" },
+          { icon: "📧", title: "Email Support", desc: "support@stockinventory.com" },
           { icon: "📞", title: "Phone Support", desc: "+977 1234567890" },
         ].map((item, index) => (
           <div

@@ -1,5 +1,6 @@
 import React from "react";
 import { Clock, RefreshCw, Search, History, Receipt, Package, ShoppingCart, User, Activity } from "lucide-react";
+import { Pagination } from "./AdminUI";
 
 const HistoryTab = ({
   historyLogs,
@@ -11,8 +12,11 @@ const HistoryTab = ({
   groupLogsByDate,
   loading,
   darkMode,
-  cardClass
+  cardClass,
+  currentPage,
+  onPageChange
 }) => {
+  const PAGE_SIZE = 10;
   const filteredLogs = historyLogs.filter(log => {
     const matchesSearch =
       (log.title || "").toLowerCase().includes(historySearch.toLowerCase()) ||
@@ -20,6 +24,8 @@ const HistoryTab = ({
     const matchesFilter = historyFilter === 'all' || (log.type || "").toLowerCase() === historyFilter;
     return matchesSearch && matchesFilter;
   });
+
+  const paginatedLogs = filteredLogs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -83,7 +89,7 @@ const HistoryTab = ({
           <p className="opacity-20 text-sm max-w-xs mx-auto mt-2">Try adjusting your search or filters.</p>
         </div>
       ) : (
-        groupLogsByDate(filteredLogs).map(([groupKey, logs]) => (
+        groupLogsByDate(paginatedLogs).map(([groupKey, logs]) => (
           <div key={groupKey} className="space-y-4">
             <div className="flex items-center gap-4">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 whitespace-nowrap">{groupKey}</span>
@@ -138,6 +144,13 @@ const HistoryTab = ({
           </div>
         ))
       )}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredLogs.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={onPageChange}
+        darkMode={darkMode}
+      />
     </div>
   );
 };

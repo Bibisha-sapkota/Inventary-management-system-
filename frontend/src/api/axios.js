@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getToken } from '../utils/auth';
+import { getToken, clearAuth } from '../utils/auth';
 
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
@@ -16,5 +16,19 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+// Add response interceptor to handle 401 globally
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            clearAuth();
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;

@@ -2,7 +2,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Invoice = require('../models/Invoice');
-const { createNotificationInternal } = require('./notificationController');
+const { createNotificationInternal, notifySuperadmins } = require('./notificationController');
 const sendEmail = require('../utils/sendEmail');
 const { logActivity } = require('../utils/logger');
 const PDFDocument = require('pdfkit');
@@ -73,9 +73,11 @@ const getAllOrders = async (req, res) => {
         // Otherwise, if I'm an admin, show what I SOLD.
         if (view === 'customer') {
             query.customerId = req.user._id;
+        } else if (req.user.role === 'superadmin') {
+            query = {};
         } else if (req.user.role === 'admin') {
             query.user = req.user._id;
-        } else if (req.user.role === 'customer') {
+        } else {
             query.customerId = req.user._id;
         }
 
@@ -140,6 +142,21 @@ const getOrder = async (req, res) => {
 const createOrder = async (req, res) => {
     try {
         req.body.user = req.user._id;
+
+        // Auto-link customerId if not provided but email or name matches a customer
+        if (!req.body.customerId && (req.body.email || req.body.customerName)) {
+            const query = { role: 'customer' };
+            if (req.body.email) {
+                query.email = req.body.email;
+            } else {
+                query.name = req.body.customerName;
+            }
+            const foundCustomer = await User.findOne(query);
+            if (foundCustomer) {
+                req.body.customerId = foundCustomer._id;
+            }
+        }
+
         const order = await Order.create(req.body);
 
         res.status(201).json({
@@ -214,18 +231,21 @@ const createOrder = async (req, res) => {
 // Update Order
 const updateOrder = async (req, res) => {
     try {
-        const order = await Order.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true }
-        );
-
-        if (!order) {
+        const oldOrder = await Order.findById(req.params.id);
+        if (!oldOrder) {
             return res.status(404).json({
                 success: false,
                 message: 'Order not found'
             });
         }
+
+        const oldStatus = oldOrder.status;
+
+        const order = await Order.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
 
         res.status(200).json({
             success: true,
@@ -245,7 +265,8 @@ const updateOrder = async (req, res) => {
         }
 
         // 2. Handle Stock Restoration on Cancellation
-        if (order.status === 'Cancelled' && order.productId) {
+        // ONLY restore stock if the old status was 'Invoiced' (stock was deducted)
+        if (order.status === 'Cancelled' && oldStatus === 'Invoiced' && order.productId) {
             const product = await Product.findById(order.productId);
             if (product) {
                 product.stock += order.quantity;
@@ -269,7 +290,7 @@ const updateOrder = async (req, res) => {
             'Order',
             order._id,
             `Order for ${order.product}`,
-            `Updated order status to: ${order.status}${order.status === 'Cancelled' ? ' (Stock Restored)' : ''}.`,
+            `Updated order status to: ${order.status}${order.status === 'Cancelled' && oldStatus === 'Invoiced' ? ' (Stock Restored)' : ''}.`,
             { status: order.status, customer: order.customerName }
         );
 
@@ -320,11 +341,7 @@ const deleteOrder = async (req, res) => {
 // Get Order Stats
 const getOrderStats = async (req, res) => {
     try {
-        let query = { user: req.user._id };
-        // Admin should only see their own orders/stats
-        // if (req.user.role === 'admin') {
-        //     query = {};
-        // }
+        let query = req.user.role === 'superadmin' ? {} : { user: req.user._id };
 
         const total = await Order.countDocuments(query);
         const pending = await Order.countDocuments({ ...query, status: 'Pending' });
@@ -355,6 +372,7 @@ const getOrderStats = async (req, res) => {
 const checkoutOrder = async (req, res) => {
     try {
         const { items, total, paymentMethod } = req.body; 
+        console.log("📥 [CHECKOUT] Received Checkout Request. Payment Method:", paymentMethod, "Total:", total, "Items Count:", items?.length);
         if (!items || items.length === 0) {
             return res.status(400).json({ success: false, message: 'Cart is empty' });
         }
@@ -391,13 +409,24 @@ const checkoutOrder = async (req, res) => {
             // ROBUST OWNER DETECTION
             let adminOwnerId = product.createdBy;
             if (!adminOwnerId) {
-                const firstAdmin = await User.findOne({ role: 'admin' });
-                if (req.user.role === 'admin') {
-                    adminOwnerId = req.user._id;
-                } else if (firstAdmin) {
-                    adminOwnerId = firstAdmin._id;
+                // Product has no owner (added by superadmin) — assign to ALL admins
+                const allAdmins = await User.find({ role: 'admin' });
+                if (allAdmins.length > 0) {
+                    for (const admin of allAdmins) {
+                        const adminIdStr = String(admin._id);
+                        if (!itemsByAdmin[adminIdStr]) {
+                            itemsByAdmin[adminIdStr] = [];
+                        }
+                        itemsByAdmin[adminIdStr].push({
+                            ...item,
+                            adminRef: admin._id,
+                            realProduct: product,
+                            _noOwner: true  // flag: don't deduct stock multiple times
+                        });
+                    }
+                    continue; // skip the default push below
                 } else {
-                    adminOwnerId = req.user._id; 
+                    adminOwnerId = req.user._id;
                 }
             }
 
@@ -426,23 +455,31 @@ const checkoutOrder = async (req, res) => {
             const adminItems = itemsByAdmin[adminIdStr];
             const adminRef = adminItems[0].adminRef;
             const invoiceNumber = 'INV-' + Date.now() + '-' + adminIdStr.slice(-4);
+            const isPaid = paymentMethod === 'Khalti' || paymentMethod === 'eSewa';
+            const alreadyDeductedProducts = new Set();
             
             let adminSubtotal = 0;
             let invoiceItemsList = [];
 
             for (const itemObj of adminItems) {
-                const { realProduct, qty, price } = itemObj;
+                const { realProduct, qty, price, _noOwner } = itemObj;
 
-                // 1. Deduct stock
-                realProduct.stock -= qty;
-                await realProduct.save();
+                // 1. Deduct stock only if paid online, and deduct only once per product
+                if (isPaid) {
+                    const productKey = String(realProduct._id);
+                    if (!_noOwner || !alreadyDeductedProducts.has(productKey)) {
+                        realProduct.stock -= qty;
+                        await realProduct.save();
+                        if (_noOwner) alreadyDeductedProducts.add(productKey);
+                    }
+                }
 
                 // 2. Create individual Order record
                 const order = await Order.create({
                     product: realProduct.name,
                     productId: realProduct._id,
                     invoiceNumber: invoiceNumber,
-                    status: 'Pending',
+                    status: isPaid ? 'Invoiced' : 'Pending',
                     date: date,
                     quantity: qty,
                     totalPrice: price * qty,
@@ -453,40 +490,42 @@ const checkoutOrder = async (req, res) => {
                     customerPhone: customerPhone
                 });
 
-            allCreatedOrders.push(order);
-            console.log(`🚀 [SUCCESS] Saved Order: ${invoiceNumber} for Admin: ${adminIdStr}`);
+                allCreatedOrders.push(order);
+                console.log(`🚀 [SUCCESS] Saved Order: ${invoiceNumber} for Admin: ${adminIdStr} (Paid: ${isPaid})`);
 
-            adminSubtotal += price * qty;
-            invoiceItemsList.push({
-                product: realProduct.name,
-                qty: qty,
-                price: price
-            });
-            globalPurchasedItemsText += `
-                <tr>
-                    <td style="padding: 10px; border-bottom: 1px solid #edf2f7;">
-                        <div style="font-weight: bold; color: #1a202c;">${realProduct.name}</div>
-                        <div style="font-size: 11px; color: #718096;">ID: ${realProduct._id.toString().slice(-6).toUpperCase()}</div>
-                    </td>
-                    <td style="padding: 10px; border-bottom: 1px solid #edf2f7; text-align: center; color: #4a5568;">${qty}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #edf2f7; text-align: right; font-weight: bold; color: #2d3748;">Rs. ${price * qty}</td>
-                </tr>
-            `;
-        }
+                adminSubtotal += price * qty;
+                invoiceItemsList.push({
+                    product: realProduct.name,
+                    qty: qty,
+                    price: price
+                });
+                globalPurchasedItemsText += `
+                    <tr>
+                        <td style="padding: 10px; border-bottom: 1px solid #edf2f7;">
+                            <div style="font-weight: bold; color: #1a202c;">${realProduct.name}</div>
+                            <div style="font-size: 11px; color: #718096;">ID: ${realProduct._id.toString().slice(-6).toUpperCase()}</div>
+                        </td>
+                        <td style="padding: 10px; border-bottom: 1px solid #edf2f7; text-align: center; color: #4a5568;">${qty}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #edf2f7; text-align: right; font-weight: bold; color: #2d3748;">Rs. ${price * qty}</td>
+                    </tr>
+                `;
+            }
 
-        // 3. Create Invoice record for this admin
-        await Invoice.create({
-            invoiceId: invoiceNumber,
-            customer: customerName,
-            date: date,
-            itemsCount: adminItems.length,
-            subtotal: adminSubtotal,
-            totalAmount: adminSubtotal,
-            itemsList: invoiceItemsList,
-            createdBy: adminRef, 
-            paymentMethod: paymentMethod || 'Cash' 
-        });
-        console.log(`📄 [SUCCESS] Created Invoice: ${invoiceNumber}`);
+            // 3. Create Invoice record in DB only if paid online
+            if (isPaid) {
+                await Invoice.create({
+                    invoiceId: invoiceNumber,
+                    customer: customerName,
+                    date: date,
+                    itemsCount: adminItems.length,
+                    subtotal: adminSubtotal,
+                    totalAmount: adminSubtotal,
+                    itemsList: invoiceItemsList,
+                    createdBy: adminRef, 
+                    paymentMethod: paymentMethod || 'Cash' 
+                });
+                console.log(`📄 [SUCCESS] Created Invoice: ${invoiceNumber}`);
+            }
 
         // 4. Notify this specific Admin
         const admin = await User.findById(adminRef);
@@ -546,7 +585,7 @@ const checkoutOrder = async (req, res) => {
         }
     }
 
-        // 5. Send confirmation to Customer (One summary email + PDF Bill)
+        // 5a. Notify Customer dashboard
         await createNotificationInternal(
             customerId,
             'Order Placed Successfully',
@@ -554,6 +593,51 @@ const checkoutOrder = async (req, res) => {
             'success',
             'order'
         );
+
+        // 5b. Notify ALL Superadmins (Dashboard notification)
+        const grandTotal = allCreatedOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+        await notifySuperadmins(
+            '🛒 New Customer Order',
+            `Customer ${customerName} placed an order with ${items.length} item(s). Total: Rs. ${grandTotal.toFixed(2)}. Invoice: ${allCreatedOrders[0]?.invoiceNumber || 'N/A'}`,
+            'success',
+            'order'
+        );
+
+        // 5c. Send email alert to all Superadmins
+        const superadmins = await User.find({ role: 'superadmin' });
+        for (const sa of superadmins) {
+            sendEmail({
+                email: sa.email,
+                subject: `🛒 New Customer Order - ${allCreatedOrders[0]?.invoiceNumber || 'N/A'}`,
+                message: `Customer ${customerName} placed a new order.`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #f8fafc;">
+                        <div style="background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); padding: 25px; text-align: center; color: white;">
+                            <h1 style="margin: 0; font-size: 22px;">🛒 New Customer Order</h1>
+                            <p style="margin: 6px 0 0; opacity: 0.85; font-size: 13px;">Superadmin Alert — Stock Inventory System</p>
+                        </div>
+                        <div style="padding: 30px; background-color: white;">
+                            <p style="color: #475569;">Hello <strong>${sa.name}</strong>,</p>
+                            <p style="color: #475569;">A new order has been placed by a customer on the storefront.</p>
+                            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 18px; margin: 20px 0;">
+                                <p style="margin: 0; font-size: 14px; color: #065f46;"><strong>Customer:</strong> ${customerName}</p>
+                                <p style="margin: 8px 0 0; font-size: 14px; color: #065f46;"><strong>Email:</strong> ${customerEmail}</p>
+                                <p style="margin: 8px 0 0; font-size: 14px; color: #065f46;"><strong>Invoice:</strong> ${allCreatedOrders[0]?.invoiceNumber || 'N/A'}</p>
+                                <p style="margin: 8px 0 0; font-size: 14px; color: #065f46;"><strong>Items:</strong> ${items.length}</p>
+                                <p style="margin: 8px 0 0; font-size: 16px; font-weight: bold; color: #064e3b;"><strong>Grand Total: Rs. ${grandTotal.toFixed(2)}</strong></p>
+                                <p style="margin: 8px 0 0; font-size: 14px; color: #065f46;"><strong>Payment:</strong> ${paymentMethod || 'Cash'}</p>
+                            </div>
+                            <div style="text-align: center; margin-top: 25px;">
+                                <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/superadmin" style="background-color: #059669; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">View in Superadmin Dashboard</a>
+                            </div>
+                        </div>
+                        <div style="background-color: #f1f5f9; padding: 16px; text-align: center; color: #94a3b8; font-size: 12px;">
+                            <p style="margin: 0;">Stock Inventory System © 2024</p>
+                        </div>
+                    </div>
+                `
+            }).catch(err => console.error(`❌ [EMAIL FAIL] Superadmin alert to ${sa.email}:`, err.message));
+        }
 
         // BACKGROUND TASK: Generate PDF and Send Customer Email
         // We do NOT 'await' this so that the response returns fast.
@@ -597,44 +681,58 @@ const checkoutOrder = async (req, res) => {
                     subject: `Order Confirmed! - ${masterBillData.invoiceNumber}`,
                     message: `Congratulations! Your order has been placed successfully.`,
                     html: `
-                        <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 650px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; background-color: #ffffff; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+                        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
                             <!-- Header -->
-                            <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 30px; text-align: center; color: #ffffff;">
-                                <div style="font-size: 32px; font-weight: 800; margin-bottom: 8px;">STOCKLY</div>
-                                <h2 style="margin: 0; color: #10b981; font-size: 20px;">Order Confirmed!</h2>
+                            <div style="background-color: #0f172a; padding: 40px 20px; text-align: center;">
+                                <h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 2px; font-weight: 900;">STOCKLY</h1>
+                                <p style="color: #10b981; margin: 10px 0 0; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Order Confirmed!</p>
                             </div>
                             
-                            <!-- Greeting -->
-                            <div style="padding: 30px; border-bottom: 1px solid #f1f5f9; text-align: left;">
-                                <h3 style="color: #0f172a; margin-top: 0;">Congratulations!</h3>
-                                <p style="color: #475569; line-height: 1.6;">Hello <strong>${customerName}</strong>,</p>
-                                <p style="color: #475569; line-height: 1.6;">Your order is placed successfully. Thank you for your order! Here are your details:</p>
-                            </div>
+                            <!-- Content -->
+                            <div style="padding: 40px 30px;">
+                                <h2 style="color: #1e293b; margin: 0 0 15px; font-size: 20px; font-weight: 800;">Congratulations!</h2>
+                                <p style="color: #64748b; margin: 0; font-size: 15px;">Hello <strong>${customerName}</strong>,</p>
+                                <p style="color: #64748b; margin: 5px 0 30px; font-size: 15px; line-height: 1.6;">Your order is placed successfully. Thank you for your order! Here are your details:</p>
 
-                            <!-- Bill Details -->
-                            <div style="padding: 30px;">
-                                <div style="background-color: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #f1f5f9;">
-                                    <p style="margin: 0; font-size: 14px; color: #64748b;"><strong>Invoice:</strong> ${masterBillData.invoiceNumber}</p>
-                                    <p style="margin: 8px 0 0; font-size: 14px; color: #64748b;"><strong>Total Amount:</strong> <span style="color: #0f172a; font-weight: 800; font-size: 18px;">Rs. ${total}</span></p>
-                                    <p style="margin: 8px 0 0; font-size: 14px; color: #64748b;"><strong>Payment:</strong> ${paymentMethod || 'Cash'}</p>
+                                <!-- Transaction Box -->
+                                <div style="background-color: #f8fafc; border-radius: 12px; padding: 25px; margin-bottom: 35px; border: 1px solid #f1f5f9;">
+                                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between;">
+                                        <span style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Invoice:</span>
+                                        <span style="color: #1e293b; font-size: 14px; font-weight: 700;">${masterBillData.invoiceNumber}</span>
+                                    </div>
+                                    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Total Amount:</span>
+                                        <span style="color: #0f172a; font-size: 20px; font-weight: 900;">Rs. ${Number(total).toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #94a3b8; font-size: 13px; font-weight: 600; text-transform: uppercase;">Payment:</span>
+                                        <span style="color: #1e293b; font-size: 14px; font-weight: 700;">${paymentMethod || 'Cash'}</span>
+                                    </div>
                                 </div>
 
-                                <!-- List Table Preview -->
-                                <h4 style="margin: 25px 0 10px; font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em;">Order Particulars</h4>
+                                <h3 style="color: #94a3b8; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">Order Particulars</h3>
                                 <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="text-align: left; color: #94a3b8; font-size: 11px; font-weight: 800; text-transform: uppercase;">
+                                            <th style="padding: 10px 0;">Item</th>
+                                            <th style="padding: 10px 0; text-align: center;">Qty</th>
+                                            <th style="padding: 10px 0; text-align: right;">Price</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         ${globalPurchasedItemsText}
                                     </tbody>
                                 </table>
 
-                                <div style="margin-top: 30px; padding: 15px; background-color: #ecfdf5; border-radius: 8px; border: 1px solid #cef7e2; color: #065f46; text-align: center; font-size: 14px;">
-                                    📎 <strong>A formal PDF copy of your bill is attached to this email.</strong>
+                                <!-- Info Box -->
+                                <div style="margin-top: 40px; background-color: #ecfdf5; border: 1px solid #d1fae5; border-radius: 10px; padding: 15px; text-align: center; color: #065f46; font-size: 13px; font-weight: 600;">
+                                    <span style="margin-right: 8px;">📎</span> A formal PDF copy of your bill is attached to this email.
                                 </div>
                             </div>
 
                             <!-- Footer -->
-                            <div style="background-color: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #f1f5f9;">
-                                <p style="margin: 0; font-size: 12px; color: #94a3b8;">&copy; 2024 Stockly Cloud Inventory. All rights reserved.</p>
+                            <div style="padding: 30px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9;">
+                                <p style="margin: 0; color: #94a3b8; font-size: 12px; font-weight: 600;">© 2024 Stockly Cloud Inventory. All rights reserved.</p>
                             </div>
                         </div>
                     `,

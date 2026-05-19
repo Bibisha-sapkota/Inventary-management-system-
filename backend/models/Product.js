@@ -70,6 +70,18 @@ const productSchema = new mongoose.Schema({
     batchNo: {
         type: String,
         default: ''
+    },
+    barcode: {
+        type: String,
+        default: ''
+    },
+    sno: {
+        type: String,
+        default: ''
+    },
+    isGlobal: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

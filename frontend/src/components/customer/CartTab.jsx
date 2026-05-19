@@ -1,7 +1,6 @@
 // src/components/customer/CartTab.jsx
 
 import Icons from "./Icons";
-import { DISCOUNT_PERCENTAGE } from "./config";
 
 export default function CartTab({
   cart,
@@ -11,6 +10,8 @@ export default function CartTab({
   discountAmount,
   tax,
   total,
+  taxRate,
+  discountRate,
   updateQty,
   removeFromCart,
   clearCart,
@@ -187,12 +188,12 @@ export default function CartTab({
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-gray-600">
-                    <span>Discount ({DISCOUNT_PERCENTAGE * 100}%)</span>
+                    <span>Discount ({discountRate || 0}%)</span>
                     <span className="text-emerald-600 font-medium">- Rs. {discountAmount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-gray-600">
-                  <span>Tax (13%)</span>
+                  <span>Tax ({taxRate || 0}%)</span>
                   <span className="text-gray-900 font-medium">Rs. {tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600 pb-4 border-b border-gray-200">

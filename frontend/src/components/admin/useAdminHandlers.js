@@ -1,5 +1,6 @@
 import { API_URL } from "./useAdminData";
 import CryptoJS from "crypto-js";
+import { handlePreviewInvoice } from "./InvoiceUtils";
 
 export const useAdminHandlers = ({
   token,
@@ -40,7 +41,11 @@ export const useAdminHandlers = ({
   setExpandedSupplierId,
   expandedSupplierId,
   supplierDetailData,
-  setShowScannerInvoice
+  setShowScannerInvoice,
+  setShowInvoiceForm,
+  setInvoiceFormData,
+  setActiveTab,
+  setIsSubmittingInvoice
 }) => {
 
   const handleLogout = (navigate, clearAuth) => {
@@ -81,7 +86,7 @@ export const useAdminHandlers = ({
   };
 
   const handleSaveProduct = async (productFormData) => {
-    if (!productFormData.name.trim()) return alert("Name is required!");
+    if (!productFormData.name.trim()) return triggerToast("Name is required!", "error");
     try {
       const payload = { ...productFormData };
       if (!payload.supplier) delete payload.supplier;
@@ -103,9 +108,10 @@ export const useAdminHandlers = ({
         fetchData();
         setTimeout(() => { fetchNotifications(); fetchHistoryLogs(); }, 800);
       } else {
-        alert("Failed to save product: " + (data.message || "Unknown error"));
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Unknown error");
+        triggerToast(msg, "error");
       }
-    } catch (err) { alert("Error saving product."); }
+    } catch (err) { triggerToast("Error saving product.", "error"); }
   };
 
   const handleDeleteProduct = async (id) => {
@@ -196,7 +202,7 @@ export const useAdminHandlers = ({
 
 
   const handleSaveOrder = async (orderFormData, editOrderId) => {
-    if (!orderFormData.product.trim()) return alert("Product is required!");
+    if (!orderFormData.product.trim()) return triggerToast("Product is required!", "error");
     const amountNum = parseFloat(orderFormData.amount);
     try {
       const url = editOrderId ? `${API_URL}/orders/${editOrderId}` : `${API_URL}/orders`;
@@ -211,7 +217,8 @@ export const useAdminHandlers = ({
           customerPhone: orderFormData.phone,
           status: orderFormData.status,
           date: orderFormData.date,
-          totalPrice: isNaN(amountNum) ? 0 : amountNum
+          totalPrice: isNaN(amountNum) ? 0 : amountNum,
+          quantity: Number(orderFormData.quantity) || 1
         })
       });
       if (res.ok) {
@@ -219,8 +226,12 @@ export const useAdminHandlers = ({
         setShowOrderForm(false);
         fetchData();
         setTimeout(() => { fetchNotifications(); fetchHistoryLogs(); }, 800);
+      } else {
+        const data = await res.json();
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Action failed");
+        triggerToast(msg, "error");
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); triggerToast("Error saving order", "error"); }
   };
 
   const handleDeleteOrder = async (id) => {
@@ -252,8 +263,12 @@ export const useAdminHandlers = ({
         triggerToast("Supplier saved!");
         setShowSupplierForm(false);
         fetchData();
+      } else {
+        const data = await res.json();
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Action failed");
+        triggerToast(msg, "error");
       }
-    } catch (err) { alert("Error saving supplier"); }
+    } catch (err) { triggerToast("Error saving supplier", "error"); }
   };
 
   const handleDeleteSupplier = async (id) => {
@@ -329,8 +344,7 @@ export const useAdminHandlers = ({
 
 
 
-  const handleCSVImport = async (data, products, fetchData, triggerToast, token) => {
-    // Basic implementation - iterate and POST
+  const handleCSVImport = async (data) => {
     let count = 0;
     for (const item of data) {
       try {
@@ -383,10 +397,11 @@ export const useAdminHandlers = ({
         setShowExchangeForm(false);
         fetchData();
       } else {
-        alert("Failed to save exchange: " + (responseData.message || "Unknown error"));
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (responseData.message || "Unknown error");
+        triggerToast(msg, "error");
       }
     } catch (err) {
-      alert("Error saving exchange: " + err.message);
+      triggerToast("Error saving exchange: " + err.message, "error");
     }
   };
 
@@ -397,22 +412,135 @@ export const useAdminHandlers = ({
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(profile)
       });
-      if (res.ok) triggerToast("Profile saved!");
-    } catch (err) { alert("Error saving profile"); }
+      if (res.ok) {
+        triggerToast("Profile saved!");
+      } else {
+        const data = await res.json();
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Action failed");
+        alert("Failed to save profile: " + msg);
+      }
+    } catch (err) { alert("Error saving invoice"); }
+    finally { setIsSubmittingInvoice(false); }
   };
 
   const handleSettingsSave = async (settings, darkMode) => {
     try {
-      // Save to per-user settings (optional)
-      await fetch(`${API_URL}/auth/settings`, {
+      const res = await fetch(`${API_URL}/auth/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ ...settings, darkMode })
       });
       
-      // Also save to global settings if superadmin, but here we just show success
-      triggerToast("Settings saved!");
+      if (res.ok) {
+        triggerToast("Settings saved!");
+      } else {
+        const data = await res.json();
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Action failed");
+        alert("Failed to save settings: " + msg);
+      }
     } catch (err) { alert("Error saving settings"); }
+  };
+
+  const handleSaveInvoice = async (invoiceFormData, invoiceTotals) => {
+    if (!invoiceFormData.customer.trim()) return triggerToast("Customer name is required!", "error");
+    setIsSubmittingInvoice(true);
+    try {
+      const res = await fetch(`${API_URL}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          invoiceId: invoiceFormData.sno,
+          date: invoiceFormData.date,
+          customer: invoiceFormData.customer,
+          membershipId: invoiceFormData.membershipId,
+          customerEmail: invoiceFormData.customerEmail,
+          itemsList: invoiceFormData.items,
+          subtotal: invoiceTotals.subtotal,
+          discount: invoiceTotals.discount,
+          tax: invoiceTotals.tax,
+          totalAmount: invoiceTotals.grandTotal,
+          paymentMethod: invoiceFormData.paymentMethod,
+          discountRate: invoiceFormData.discountRate,
+          taxRate: invoiceFormData.taxRate
+        })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        const finalInvoice = result.data || { invoiceId: invoiceFormData.sno, ...invoiceFormData };
+        triggerToast("Invoice created successfully!");
+        setShowInvoiceForm(false);
+        fetchData();
+        setActiveTab("invoices");
+        
+        if (invoiceFormData.paymentMethod === 'eSewa') {
+          initiateEsewaPayment(invoiceFormData.sno, invoiceTotals.subtotal, invoiceTotals.discount, invoiceTotals.tax, invoiceTotals.grandTotal);
+        } else if (invoiceFormData.paymentMethod === 'Khalti') {
+          initiateKhaltiPayment(invoiceFormData.sno, invoiceTotals.grandTotal, triggerToast);
+        }
+      } else {
+        const data = await res.json();
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Failed to save invoice");
+        triggerToast(msg, "error");
+      }
+    } catch (err) {
+      triggerToast("Error saving invoice", "error");
+    }
+  };
+
+  const handleSaveScannerInvoice = async (invoiceData) => {
+    setIsSubmittingInvoice(true);
+    try {
+      const res = await fetch(`${API_URL}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          date: invoiceData.date,
+          customer: invoiceData.customer,
+          membershipId: invoiceData.membershipId,
+          customerEmail: invoiceData.customerEmail,
+          itemsList: invoiceData.items.map(item => ({
+            product: item.product,
+            productId: item.productId,
+            qty: item.qty,
+            price: item.price
+          })),
+          subtotal: invoiceData.subtotal,
+          discount: invoiceData.discount,
+          tax: invoiceData.tax,
+          totalAmount: invoiceData.grandTotal,
+          itemsCount: invoiceData.items.length,
+          paymentMethod: invoiceData.paymentMethod,
+          discountRate: invoiceData.discountRate,
+          taxRate: invoiceData.taxRate,
+          sourceOrderId: invoiceData.sourceOrderId
+        })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        const finalInvoice = result.data || {};
+        triggerToast("Invoice created successfully!");
+        setShowScannerInvoice(false);
+        fetchData();
+        setActiveTab("invoices");
+        
+        if (invoiceData.paymentMethod === 'eSewa') {
+          initiateEsewaPayment(finalInvoice.invoiceId || Date.now(), invoiceData.subtotal, invoiceData.discount, invoiceData.tax, invoiceData.grandTotal);
+        } else if (invoiceData.paymentMethod === 'Khalti') {
+          initiateKhaltiPayment(finalInvoice.invoiceId || Date.now(), invoiceData.grandTotal, triggerToast);
+        }
+      } else {
+        const data = await res.json().catch(() => ({ message: "Server error occurred" }));
+        const msg = res.status === 403 ? "Your account is blocked by superadmin!" : (data.message || "Failed to save invoice");
+        triggerToast(msg, "error");
+      }
+    } catch (err) {
+      console.error("❌ Invoice Save Error:", err);
+      triggerToast("Error saving invoice", "error");
+    } finally {
+      setIsSubmittingInvoice(false);
+    }
   };
 
   const handleResetData = async () => {
@@ -430,6 +558,50 @@ export const useAdminHandlers = ({
   };
 
 
+  const handleDeleteExchange = async (id) => {
+    if (!window.confirm("⚠️ Are you sure you want to delete this exchange record? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_URL}/exchanges/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        triggerToast("Exchange deleted successfully!");
+        fetchData();
+        fetchNotifications();
+        fetchHistoryLogs();
+      } else {
+        const data = await res.json();
+        triggerToast(data.message || "Failed to delete exchange", "error");
+      }
+    } catch (err) {
+      console.error("Delete Exchange Error:", err);
+      triggerToast("Error deleting exchange", "error");
+    }
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    if (!window.confirm("⚠️ Are you sure you want to delete this invoice? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`${API_URL}/invoices/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        triggerToast("Invoice deleted successfully!");
+        fetchData();
+        fetchNotifications();
+        fetchHistoryLogs();
+      } else {
+        const data = await res.json();
+        triggerToast(data.message || "Failed to delete invoice", "error");
+      }
+    } catch (err) {
+      console.error("Delete Invoice Error:", err);
+      triggerToast("Error deleting invoice", "error");
+    }
+  };
+
   return {
     handleLogout,
     handleNotificationClick,
@@ -445,6 +617,10 @@ export const useAdminHandlers = ({
     handleSaveLot,
     handleCSVImport,
     handleSaveExchange,
+    handleDeleteExchange,
+    handleSaveInvoice,
+    handleSaveScannerInvoice,
+    handleDeleteInvoice,
     handleProfileSave,
     handleSettingsSave,
     handleResetData

@@ -111,6 +111,31 @@ const Sidebar = ({
             </li>
           )}
 
+          {("invoices ledger billing").includes(s) && (
+            <li>
+              <button
+                onClick={() => setInvoiceSidebarOpen(!invoiceSidebarOpen)}
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all uppercase text-xs font-black tracking-widest ${activeTab === "invoices"
+                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-white/10"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
+                  }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Receipt size={20} />
+                  <span>Invoices</span>
+                </span>
+                {invoiceSidebarOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              {(invoiceSidebarOpen || s) && (
+                <ul className="mt-1 ml-6 space-y-1">
+                  {("financial ledger").includes(s) && <SidebarSubItem label="Financial Ledger" active={activeTab === "invoices"} onClick={() => switchTab("invoices")} />}
+                  {("manual invoice").includes(s) && <SidebarSubItem label="Manual Invoice" active={false} onClick={() => { switchTab("invoices"); openAddInvoice(); }} />}
+                  {("barcode scanner").includes(s) && <SidebarSubItem label="Barcode Scanner" active={false} onClick={() => { switchTab("invoices"); setShowScannerInvoice(true); }} />}
+                </ul>
+              )}
+            </li>
+          )}
+
 
           {("suppliers supplier detail add supplier").includes(s) && (
             <li>

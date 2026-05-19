@@ -1,6 +1,7 @@
 // src/components/customer/CustomerDashboard.jsx
 
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 // Import Tabs
 import DashboardTab from "./DashboardTab";
@@ -37,14 +38,39 @@ export default function CustomerDashboard() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
 
+  // Handlers
+  const fetchGlobalSettings = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/settings', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.data.success) {
+        setSettings(res.data.data);
+      }
+    } catch (e) { console.error("Failed to fetch settings", e); }
+  };
+
+  useEffect(() => {
+    fetchGlobalSettings();
+  }, []);
+
   // Custom Hooks
   const {
     profile,
     handleProfilePhoto,
     handleProfileChange,
     saveProfile,
-    isSaving
+    isSaving,
+    refreshProfile
   } = useProfile();
+
+  // Polling for security status (every 10 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshProfile();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [refreshProfile]);
 
   const {
     cart,
@@ -61,7 +87,7 @@ export default function CustomerDashboard() {
     discountAmount,
     tax,
     total,
-  } = useCart();
+  } = useCart(settings.taxRate, settings.defaultDiscount);
 
   const { notifications, unreadCount, markAllNotificationsAsRead, markAsRead, refreshNotifications } = useNotifications();
   const { orders, isLoading: isOrdersLoading, refreshOrders, addOrder, cancelOrder } = useOrders();
@@ -220,6 +246,7 @@ export default function CustomerDashboard() {
             cartCount={cartCount}
             setActiveTab={setActiveTab}
             recentOrders={orders.slice(0, 5)}
+            settings={settings}
           />
         );
       case "products":
@@ -240,6 +267,8 @@ export default function CustomerDashboard() {
             discountAmount={discountAmount}
             tax={tax}
             total={total}
+            taxRate={settings.taxRate ?? 13}
+            discountRate={settings.defaultDiscount ?? 0}
             updateQty={updateQty}
             removeFromCart={removeFromCart}
             clearCart={clearCart}
@@ -308,6 +337,56 @@ export default function CustomerDashboard() {
     }
   };
 
+  const [showPromoPopup, setShowPromoPopup] = useState(false);
+
+  useEffect(() => {
+    if (settings.discountBanner && !localStorage.getItem(`banner_seen_${settings.discountBanner.slice(-20)}`)) {
+      const timer = setTimeout(() => {
+        setShowPromoPopup(true);
+      }, 2000); // 2 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [settings.discountBanner]);
+
+  // --- RESTRICTED SCREEN CHECK ---
+  if (profile.status === "blocked") {
+    return (
+      <div className="fixed inset-0 z-[200] bg-[#0B1120] flex items-center justify-center p-6 font-sans">
+        <div className="bg-white rounded-[3rem] w-full max-w-lg p-12 text-center shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-500 relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-rose-500/10 rounded-full blur-[80px]"></div>
+          
+          <div className="relative mb-10 inline-block">
+            <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center text-rose-500 shadow-inner">
+              <Icons.AlertCircle size={48} />
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-rose-50">
+              <Icons.X size={16} className="text-rose-500" />
+            </div>
+          </div>
+
+          <h2 className="text-4xl font-black text-[#1e293b] tracking-tighter mb-4">Account Restricted</h2>
+          <p className="text-[#64748b] text-base font-medium leading-relaxed mb-10 max-w-[340px] mx-auto">
+            Your customer access has been <span className="text-rose-600 font-black border-b-2 border-rose-100">suspended</span> by the system Superadmin. You can no longer place orders or access dashboard features.
+          </p>
+
+          <button 
+            onClick={handleLogout}
+            className="w-full py-5 bg-[#0B1120] text-white rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-[#1e293b] transition-all shadow-2xl flex items-center justify-center gap-3 active:scale-95 group"
+          >
+            <Icons.Logout size={20} className="group-hover:-translate-x-1 transition-transform" />
+            Terminate Session
+          </button>
+
+          <p className="mt-10 text-[10px] font-black uppercase tracking-[0.3em] text-[#cbd5e1] flex items-center justify-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            System Security Enforcement V2.4
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar */}
@@ -320,6 +399,57 @@ export default function CustomerDashboard() {
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
       />
+
+      {/* Promotion Popup Modal */}
+      {showPromoPopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-700">
+          <div className="bg-[#10B981] rounded-[2.5rem] w-full max-w-4xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] overflow-hidden animate-in zoom-in-95 duration-500 relative flex flex-col md:flex-row h-[500px]">
+            <button 
+              onClick={() => {
+                localStorage.setItem(`banner_seen_${settings.discountBanner.slice(-20)}`, 'true');
+                setShowPromoPopup(false);
+              }}
+              className="absolute top-6 right-6 z-20 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all backdrop-blur-md"
+            >
+              <Icons.X size={24} />
+            </button>
+            
+            {/* Left Content */}
+            <div className="flex-1 p-12 flex flex-col justify-center text-white relative z-10">
+              <h4 className="text-sm font-black uppercase tracking-[0.3em] opacity-80 mb-4">Stock Inventory Special</h4>
+              <h2 className="text-5xl md:text-6xl font-black tracking-tighter leading-tight mb-6">
+                {settings.bannerTitle || "New Offers Available!"}
+              </h2>
+              <p className="text-emerald-50 text-lg font-bold mb-10 opacity-90">
+                Talk to our experts & grab the best deals for your business today.
+              </p>
+              
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    localStorage.setItem(`banner_seen_${settings.discountBanner.slice(-20)}`, 'true');
+                    setShowPromoPopup(false);
+                    setActiveTab("products");
+                  }}
+                  className="px-10 py-4 bg-black text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-900 transition-all shadow-2xl active:scale-95 w-full md:w-auto text-center"
+                >
+                  Shop Now
+                </button>
+              </div>
+            </div>
+
+            {/* Right Image */}
+            <div className="flex-1 relative overflow-hidden hidden md:block">
+              <img 
+                src={settings.discountBanner} 
+                alt="Promotion" 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent to-[#10B981]/10"></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -337,7 +467,7 @@ export default function CustomerDashboard() {
                 {activeTab === "history" ? "Order History" : activeTab}
               </h2>
               <p className="text-xs text-gray-400 hidden sm:block">
-                Welcome back, {profile.name.split(" ")[0]}!
+                Welcome back, {profile.name === "Loading..." ? "User" : profile.name.split(" ")[0]}!
               </p>
             </div>
           </div>
@@ -421,6 +551,8 @@ export default function CustomerDashboard() {
           discountAmount={discountAmount}
           tax={tax}
           total={total}
+          taxRate={settings.taxRate ?? 13}
+          discountRate={settings.defaultDiscount ?? 0}
           profile={profile}
           onClose={() => setShowInvoice(false)}
           onConfirm={handleCompleteOrder}

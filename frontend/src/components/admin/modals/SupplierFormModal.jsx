@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Modal } from "../AdminUI";
 
 const SupplierFormModal = ({
@@ -11,13 +11,26 @@ const SupplierFormModal = ({
   darkMode,
   inputClass
 }) => {
+  const [error, setError] = useState("");
+
   if (!showSupplierForm) return null;
 
   return (
     <Modal
       title={editSupplierId ? "Edit Partner Profile" : "Register New Partner"}
-      onClose={() => setShowSupplierForm(false)}
-      onConfirm={handleSaveSupplier}
+      onClose={() => {
+        setError("");
+        setShowSupplierForm(false);
+      }}
+      onConfirm={() => {
+        const digits = supplierFormData.phone.replace(/\D/g, "");
+        if (digits.length < 10) {
+          setError("Phone number must be at least 10 digits!");
+          return;
+        }
+        setError("");
+        handleSaveSupplier();
+      }}
       darkMode={darkMode}
       maxWidth="max-w-xl"
     >
@@ -49,13 +62,34 @@ const SupplierFormModal = ({
           </div>
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-1 mb-1 block">Phone Number *</label>
-            <input type="text" className={`${inputClass} !rounded-xl`} placeholder="+977-98XXXXXXXX" value={supplierFormData.phone} onChange={(e) => setSupplierFormData({ ...supplierFormData, phone: e.target.value })} />
+            <input 
+              type="text" 
+              className={`${inputClass} !rounded-xl ${error ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+              placeholder="+977-98XXXXXXXX" 
+              value={supplierFormData.phone} 
+              onChange={(e) => {
+                setSupplierFormData({ ...supplierFormData, phone: e.target.value });
+                if (error) setError("");
+              }} 
+            />
+            {error && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1 animate-pulse">❌ {error}</p>}
           </div>
         </div>
 
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-1 mb-1 block">Operational Address</label>
           <input type="text" className={`${inputClass} !rounded-xl`} placeholder="Headquarters or warehouse location" value={supplierFormData.address} onChange={(e) => setSupplierFormData({ ...supplierFormData, address: e.target.value })} />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-1 mb-1 block">Amount Paid to Supplier (रु - Paid Amount)</label>
+          <input 
+            type="number" 
+            className={`${inputClass} !rounded-xl`} 
+            placeholder="Enter total amount paid to this supplier" 
+            value={supplierFormData.amountPaid || 0} 
+            onChange={(e) => setSupplierFormData({ ...supplierFormData, amountPaid: Number(e.target.value) || 0 })} 
+          />
         </div>
 
         <div className={`p-4 rounded-2xl border ${darkMode ? "bg-gray-800/50 border-gray-700" : "bg-gray-50 border-gray-100"}`}>

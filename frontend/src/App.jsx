@@ -6,6 +6,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import GoogleSuccess from "./pages/auth/GoogleSuccess";
+import GoogleRoleSelect from "./pages/auth/GoogleRoleSelect";
+import VerifyLoginOTP from "./pages/VerifyLoginOTP";
 
 import AdminDashboard from "./pages/AdminDashboard";
 // Changed import path here:
@@ -29,6 +31,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-login-otp" element={<VerifyLoginOTP />} />
+        <Route path="/google-role-select" element={<GoogleRoleSelect />} />
         <Route path="/auth-success" element={<GoogleSuccess />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/contact" element={<ContactPage />} />
@@ -189,6 +193,16 @@ function App() {
           element={
             <PrivateRoute allowedRoles={["superadmin"]}>
               <SuperadminDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        {/* ============ CUSTOMER ROUTES ============ */}
+        <Route
+          path="/customer"
+          element={
+            <PrivateRoute allowedRoles={["customer"]}>
+              <CustomerDashboard />
             </PrivateRoute>
           }
         />

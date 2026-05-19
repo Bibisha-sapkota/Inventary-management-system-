@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus, RotateCcw, Calendar, CheckCircle, AlertCircle, ArrowRight, Edit2, Trash2, Search } from "lucide-react";
+import { Pagination } from "./AdminUI";
 
 const ExchangesTab = ({
   exchanges,
@@ -10,8 +11,18 @@ const ExchangesTab = ({
   setShowExchangeForm,
   setExchangeFormData,
   handleDeleteExchange,
-  triggerToast
+  triggerToast,
+  currentPage,
+  onPageChange
 }) => {
+  const PAGE_SIZE = 10;
+  const filteredExchanges = exchanges.filter(ex =>
+    ex.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ex.returnedProduct?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ex.newProduct?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ex.reason?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const paginatedExchanges = filteredExchanges.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   return (
     <div className="space-y-8 pb-8">
       {/* Premium Header */}
@@ -162,7 +173,7 @@ const ExchangesTab = ({
       ) : (
         /* Exchanges List */
         <div className="space-y-5">
-          {exchanges.map((ex, idx) => (
+          {paginatedExchanges.map((ex, idx) => (
             <div
               key={ex._id}
               className={`${cardClass} rounded-2xl p-7 transition-all duration-300 hover:shadow-2xl border-l-4 group ${ex.restocked
@@ -339,6 +350,13 @@ const ExchangesTab = ({
           ))}
         </div>
       )}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredExchanges.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={onPageChange}
+        darkMode={darkMode}
+      />
     </div>
   );
 };

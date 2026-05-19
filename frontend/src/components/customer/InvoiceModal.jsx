@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import Icons from "./Icons";
-import { DISCOUNT_PERCENTAGE } from "./config";
 
 export default function InvoiceModal({
   cart,
@@ -8,6 +7,8 @@ export default function InvoiceModal({
   discountAmount,
   tax,
   total,
+  taxRate,
+  discountRate,
   profile,
   onClose,
   onConfirm,
@@ -51,7 +52,7 @@ export default function InvoiceModal({
       </head>
       <body>
         <div class="header">
-          <h1>Stockly</h1>
+          <h1 style="color: #10B981; margin: 0; font-size: 24px; text-transform: uppercase;">Stock <span style="color: #064e3b;">Inventory</span></h1>
           <p>Customer Portal Invoice</p>
         </div>
         <div class="info">
@@ -75,8 +76,8 @@ export default function InvoiceModal({
         </table>
         <div class="totals">
           <p>Subtotal: Rs. ${subtotal.toLocaleString()}</p>
-          <p>Discount (${DISCOUNT_PERCENTAGE * 100}%): - Rs. ${discountAmount.toFixed(2)}</p>
-          <p>Tax (13%): Rs. ${tax.toFixed(2)}</p>
+          <p>Discount (${discountRate || 0}%): - Rs. ${discountAmount.toFixed(2)}</p>
+          <p>Tax (${taxRate || 0}%): Rs. ${tax.toFixed(2)}</p>
           <p>Shipping: Free</p>
           <p class="total-amount">Total: Rs. ${total.toFixed(2)}</p>
         </div>
@@ -142,11 +143,11 @@ export default function InvoiceModal({
               <span>Rs. {subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Discount ({DISCOUNT_PERCENTAGE * 100}%)</span>
+              <span>Discount ({discountRate || 0}%)</span>
               <span className="text-red-500">- Rs. {discountAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Tax (13%)</span>
+              <span>Tax ({taxRate || 0}%)</span>
               <span>Rs. {tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t border-gray-200">
@@ -160,22 +161,14 @@ export default function InvoiceModal({
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Select Payment Method</h4>
             <div className="grid grid-cols-1 gap-3">
               {paymentOptions.map((opt) => (
-                <label
+                <div
                   key={opt.id}
+                  onClick={() => !isProcessing && setPaymentMethod(opt.id)}
                   className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentMethod === opt.id
                     ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100"
                     : "border-gray-100 hover:border-gray-200"
                     } ${isProcessing ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  <input
-                    type="radio"
-                    name="payment"
-                    className="hidden"
-                    value={opt.id}
-                    checked={paymentMethod === opt.id}
-                    disabled={isProcessing}
-                    onChange={() => setPaymentMethod(opt.id)}
-                  />
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{opt.icon}</span>
                     <span className={`font-semibold ${paymentMethod === opt.id ? "text-emerald-700" : "text-gray-700"}`}>
@@ -187,7 +180,7 @@ export default function InvoiceModal({
                       <Icons.Check className="w-3 h-3 text-white" />
                     </div>
                   )}
-                </label>
+                </div>
               ))}
             </div>
           </div>
