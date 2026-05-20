@@ -19,7 +19,8 @@ import {
   User
 } from "lucide-react";
 import {
-  AreaChart,
+  ComposedChart,
+  Line,
   Area,
   XAxis,
   YAxis,
@@ -218,11 +219,11 @@ const DashboardTab = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div className={`${cardClass} p-6 rounded-3xl shadow-sm`}>
           <h3 className="text-lg font-bold mb-6 uppercase">
-            Sales Analysis
+            Revenue & Order Trend
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="99%" height={256}>
-              <AreaChart data={salesData}>
+              <ComposedChart data={salesData}>
                 <defs>
                   <linearGradient
                     id="colorUv"
@@ -255,9 +256,19 @@ const DashboardTab = ({
                   tick={{ fill: "#9ca3af" }}
                 />
                 <YAxis
+                  yAxisId="revenue"
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: "#9ca3af", fontSize: 10 }}
+                  tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                />
+                <YAxis
+                  yAxisId="orders"
+                  orientation="right"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#9ca3af", fontSize: 10 }}
+                  allowDecimals={false}
                 />
                 <Tooltip
                   contentStyle={{
@@ -266,11 +277,10 @@ const DashboardTab = ({
                     borderRadius: "16px",
                     boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
                     border: "none",
-                    padding: "12px",
+                    padding: "12px 16px",
                     fontFamily: "sans-serif"
                   }}
                   itemStyle={{
-                    color: "#22c55e",
                     fontSize: "12px",
                     fontWeight: "800"
                   }}
@@ -282,19 +292,32 @@ const DashboardTab = ({
                     letterSpacing: "0.05em",
                     marginBottom: "4px"
                   }}
-                  formatter={(val) => [`Rs. ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Sales Amount"]}
+                  formatter={(val, name) => name === 'Orders' ? [val, name] : [`Rs. ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]}
                   labelFormatter={(label) => `Date: ${label}`}
                 />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                 <Area
+                  yAxisId="revenue"
                   type="monotone"
-                  dataKey="uv"
+                  dataKey="revenue"
+                  name="Revenue ($)"
                   stroke="#22c55e"
-                  strokeWidth={3.5}
+                  strokeWidth={3}
                   activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2, fill: '#fff' }}
                   fillOpacity={1}
                   fill="url(#colorUv)"
                 />
-              </AreaChart>
+                <Line 
+                  yAxisId="orders"
+                  type="monotone" 
+                  dataKey="orders" 
+                  name="Orders" 
+                  stroke="#3b82f6" 
+                  strokeWidth={2} 
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#3b82f6' }} 
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>

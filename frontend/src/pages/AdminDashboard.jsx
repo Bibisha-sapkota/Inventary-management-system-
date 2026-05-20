@@ -441,14 +441,27 @@ const AdminDashboard = ({ initialTab }) => {
   const recentInvoices = [...(invoices || [])].slice(0, 5);
   const recentHistory = [...(historyLogs || [])].slice(0, 5);
 
-  const salesData = Object.entries((invoices || []).reduce((acc, inv) => {
-    const date = inv.date || new Date(inv.createdAt).toISOString().split('T')[0];
-    acc[date] = (acc[date] || 0) + (inv.totalAmount || 0);
-    return acc;
-  }, {})).map(([date, amount]) => ({
-    name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    uv: amount
-  })).sort((a, b) => new Date(a.name) - new Date(b.name)).slice(-7); // Last 7 days with data
+  const salesData = (() => {
+    const groups = {};
+    const now = new Date();
+    // Pre-seed last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.toLocaleDateString('en-US', { month: 'short' });
+      const sortVal = d.getTime();
+      groups[key] = { name: key, revenue: 0, orders: 0, sortVal };
+    }
+    // Aggregate invoice data
+    (invoices || []).forEach(inv => {
+      const d = new Date(inv.date || inv.createdAt);
+      const key = d.toLocaleDateString('en-US', { month: 'short' });
+      if (groups[key]) {
+        groups[key].revenue += (inv.totalAmount || 0);
+        groups[key].orders += 1;
+      }
+    });
+    return Object.values(groups).sort((a, b) => a.sortVal - b.sortVal);
+  })();
   const stockByCategoryData = Object.entries((products || []).reduce((acc, p) => {
     const cat = p.category || "General";
     acc[cat] = (acc[cat] || 0) + (p.stock || 0);

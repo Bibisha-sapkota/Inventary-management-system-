@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import CryptoJS from "crypto-js";
 import { QRCodeCanvas } from "qrcode.react";
 import { LayoutDashboard, Users, ShieldCheck, Package, ShoppingCart, Receipt, Truck, Bell, Settings, LogOut, Trash2, ShieldAlert, TrendingUp, BarChart2, RotateCw, ChevronRight, ChevronDown, Menu, X, FileText, Edit, Ban, CheckCircle, Plus, AlertTriangle, Search, Download, Upload, Image as ImageIcon, Phone, Mail, ShoppingBag, Scan, Activity, ArrowRight, Eye, EyeOff, Printer, User, DollarSign } from "lucide-react";
-import { PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { PieChart, Pie, Cell, ComposedChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import api from "../../api/axios";
 import { getUser, clearAuth } from "../../utils/auth";
 import logoImg from "../../images/logo.png";
@@ -1293,10 +1293,11 @@ export default function SuperadminDashboard() {
                   <PieChart>
                     <Pie
                       data={Object.entries(data.products.reduce((acc, p) => { acc[p.category || 'General'] = (acc[p.category || 'General'] || 0) + 1; return acc; }, {})).map(([name, value]) => ({ name, value }))}
-                      cx="50%" cy="50%" innerRadius={70} outerRadius={95} paddingAngle={5} dataKey="value"
+                      cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                     >
                       {Object.entries(data.products.reduce((acc, p) => { acc[p.category || 'General'] = (acc[p.category || 'General'] || 0) + 1; return acc; }, {})).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#f59e0b', '#06b6d4'][index % 6]} stroke="none" />
+                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#f59e0b', '#06b6d4'][index % 6]} stroke="#ffffff" strokeWidth={2} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -1309,12 +1310,12 @@ export default function SuperadminDashboard() {
             </div>
 
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/20 p-8 overflow-hidden relative group">
-              <h3 className="text-xl font-black tracking-tight text-gray-900 mb-2">Revenue Growth</h3>
+              <h3 className="text-xl font-black tracking-tight text-gray-900 mb-2">Revenue & Order Trend</h3>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-8">Global financial performance</p>
 
               <div className="h-72 relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={(() => {
+                  <ComposedChart data={(() => {
                     const groups = {};
                     const now = new Date();
                     
@@ -1343,7 +1344,7 @@ export default function SuperadminDashboard() {
                         key = `W${week} ${d.getFullYear()}`;
                         sortVal = new Date(d.getFullYear(), 0, 1).getTime() + (week * 7 * 24 * 60 * 60 * 1000);
                       }
-                      groups[key] = { date: key, amount: 0, sortVal };
+                      groups[key] = { date: key, amount: 0, orders: 0, sortVal };
                     }
 
                     // 2. Aggregate actual data
@@ -1359,29 +1360,33 @@ export default function SuperadminDashboard() {
                         const week = Math.ceil((d.getDay() + 1 + days) / 7);
                         key = `W${week} ${d.getFullYear()}`;
                       }
-                      if (groups[key]) groups[key].amount += (i.totalAmount || 0);
+                      if (groups[key]) {
+                        groups[key].amount += (i.totalAmount || 0);
+                        groups[key].orders += 1;
+                      }
                     });
                     return Object.values(groups).sort((a, b) => a.sortVal - b.sortVal);
                   })()}>
                     <defs>
-                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      <linearGradient id="colorRevGreen" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                        <stop offset="50%" stopColor="#10b981" stopOpacity={0.08} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: "#94a3b8" }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: "#94a3b8" }} tickFormatter={v => `Rs.${v >= 1000 ? (v / 1000) + 'k' : v}`} />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: '600', fill: "#94a3b8" }} dy={10} />
+                    <YAxis yAxisId="revenue" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: "#94a3b8" }} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
+                    <YAxis yAxisId="orders" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: "#94a3b8" }} allowDecimals={false} />
                     <Tooltip
                       contentStyle={{ 
                         backgroundColor: '#ffffff', 
                         borderRadius: '16px', 
                         border: 'none', 
                         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', 
-                        padding: '12px' 
+                        padding: '12px 16px' 
                       }}
                       itemStyle={{
-                        color: "#3b82f6",
                         fontSize: "12px",
                         fontWeight: "800"
                       }}
@@ -1393,19 +1398,32 @@ export default function SuperadminDashboard() {
                         letterSpacing: "0.05em",
                         marginBottom: "4px"
                       }}
-                      formatter={(val) => [`Rs. ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, "Revenue"]}
+                      formatter={(val, name) => name === 'Orders' ? [val, name] : [`Rs. ${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]}
                       labelFormatter={(label) => `Period: ${label}`}
                     />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
                     <Area 
+                      yAxisId="revenue"
                       type="monotone" 
                       dataKey="amount" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3.5} 
+                      name="Revenue ($)"
+                      stroke="#10b981" 
+                      strokeWidth={3} 
                       fillOpacity={1} 
-                      fill="url(#colorRev)" 
-                      activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2, fill: '#fff' }}
+                      fill="url(#colorRevGreen)" 
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#fff' }}
                     />
-                  </AreaChart>
+                    <Line 
+                      yAxisId="orders"
+                      type="monotone" 
+                      dataKey="orders" 
+                      name="Orders"
+                      stroke="#3b82f6" 
+                      strokeWidth={2} 
+                      dot={false}
+                      activeDot={{ r: 5, fill: '#3b82f6' }} 
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
