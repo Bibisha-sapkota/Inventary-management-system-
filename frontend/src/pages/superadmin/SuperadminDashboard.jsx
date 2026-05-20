@@ -994,14 +994,6 @@ export default function SuperadminDashboard() {
               </button>
             </li>
 
-            {/* User Management */}
-            <li>
-              <button onClick={() => { setTab("usermanagement"); setSidebarOpen(false); }} className={navItemClass("usermanagement")}>
-                <span className="flex items-center gap-3"><ShieldCheck size={20} /><span>User Management</span></span>
-                {tab === "usermanagement" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
-              </button>
-            </li>
-
             {/* Products */}
             <li>
               <button onClick={() => setProductsMenuOpen(!productsMenuOpen)} className={navItemClass("products")}>
@@ -1015,6 +1007,16 @@ export default function SuperadminDashboard() {
                 </ul>
               )}
             </li>
+
+            {/* User Management */}
+            <li>
+              <button onClick={() => { setTab("usermanagement"); setSidebarOpen(false); }} className={navItemClass("usermanagement")}>
+                <span className="flex items-center gap-3"><ShieldCheck size={20} /><span>User Management</span></span>
+                {tab === "usermanagement" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+              </button>
+            </li>
+
+
 
             {/* Orders */}
             <li>
@@ -1136,7 +1138,7 @@ export default function SuperadminDashboard() {
     const recentProducts = [...data.products]
       .filter(p => {
         const owner = admins.find(a => a._id === p.createdBy);
-        return owner?.role === 'superadmin' || p.addedByRole === 'superadmin';
+        return !owner || owner.role === 'superadmin' || p.addedByRole === 'superadmin' || p.isGlobal;
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 10);
@@ -1151,11 +1153,10 @@ export default function SuperadminDashboard() {
             </div>
           </div>
 
-          {/* First Row: 4 Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* First Row: 3 Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatCard label="Total Users" value={data.users.length} gradient="bg-blue-50" icon={<Users size={24} />} />
             <StatCard label="Total Admins" value={admins.length} gradient="bg-purple-50" icon={<ShieldCheck size={24} />} />
-            {data.customers?.length > 0 && <StatCard label="Total Customers" value={data.customers.length} gradient="bg-emerald-50" icon={<Users size={24} />} />}
             <StatCard label="Total Orders" value={data.orders.length} gradient="bg-indigo-50" icon={<ShoppingCart size={24} />} />
           </div>
 
@@ -1413,8 +1414,8 @@ export default function SuperadminDashboard() {
             <div className="lg:col-span-2 bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/20 p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-xl font-black tracking-tight text-gray-900">Recent Activity</h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Latest system-wide transactions</p>
+                  <h3 className="text-xl font-black tracking-tight text-gray-900">Recent Orders</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Latest system-wide orders</p>
                 </div>
                 <button onClick={() => setTab('orders')} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">View All</button>
               </div>
@@ -2266,6 +2267,7 @@ export default function SuperadminDashboard() {
               setShowProductForm(true);
             }
           }}
+          userRole="superadmin"
         />
       );
       case "orders": return (
@@ -2380,7 +2382,11 @@ export default function SuperadminDashboard() {
         </div>
       );
 
-      case "invoices": return (
+      case "invoices": {
+        // Superadmin should see total calculations for all invoices, not just their own
+        const allInvoices = data.invoices || [];
+
+        return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
             <div>
@@ -2423,6 +2429,44 @@ export default function SuperadminDashboard() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-emerald-50 text-emerald-800 rounded-xl p-4 border border-emerald-100">
+              <p className="text-xs uppercase font-semibold opacity-70">
+                Total Invoices
+              </p>
+              <p className="text-2xl font-bold mt-1">
+                {allInvoices.length}
+              </p>
+            </div>
+            <div className="bg-emerald-50 text-emerald-800 rounded-xl p-4 border border-emerald-100">
+              <p className="text-xs uppercase font-semibold opacity-70">
+                Total Revenue
+              </p>
+              <p className="text-2xl font-bold mt-1">
+                Rs.{" "}
+                {allInvoices
+                  .reduce((sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || 0)), 0)
+                  .toFixed(2)}
+              </p>
+            </div>
+            <div className="bg-emerald-50 text-emerald-800 rounded-xl p-4 border border-emerald-100">
+              <p className="text-xs uppercase font-semibold opacity-70">
+                Avg. Invoice
+              </p>
+              <p className="text-2xl font-bold mt-1">
+                Rs.{" "}
+                {allInvoices.length
+                  ? (
+                    allInvoices.reduce(
+                      (sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || 0)),
+                      0
+                    ) / allInvoices.length
+                  ).toFixed(2)
+                  : "0.00"}
+              </p>
+            </div>
+          </div>
+
           <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/20 overflow-hidden">
             <table className="w-full text-left whitespace-nowrap min-w-max">
               <thead>
@@ -2438,9 +2482,6 @@ export default function SuperadminDashboard() {
               <tbody className="divide-y divide-gray-50">
                 {(() => {
                   const filtered = (data.invoices || []).filter(iv => {
-                    const isOwn = iv.user === user?._id || iv.createdBy === user?._id;
-                    if (!isOwn) return false;
-
                     return (
                       iv.invoiceId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                       iv.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2496,12 +2537,13 @@ export default function SuperadminDashboard() {
             </table>
             <Pagination
               currentPage={pages.invoices}
-              totalItems={(data.invoices || []).filter(iv => (iv.user === user?._id || iv.createdBy === user?._id) && (iv.invoiceId?.toLowerCase().includes(searchTerm.toLowerCase()) || iv.customer?.toLowerCase().includes(searchTerm.toLowerCase()))).length}
+              totalItems={(data.invoices || []).filter(iv => (iv.invoiceId?.toLowerCase().includes(searchTerm.toLowerCase()) || iv.customer?.toLowerCase().includes(searchTerm.toLowerCase()))).length}
               onPageChange={(p) => setPages({ ...pages, invoices: p })}
             />
           </div>
         </div>
       );
+    }
 
 
 

@@ -16,7 +16,8 @@ const ProductsTab = ({
   settings,
   lowStockThreshold,
   currentPage,
-  onPageChange
+  onPageChange,
+  userRole
 }) => {
   const PAGE_SIZE = 10;
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -163,18 +164,18 @@ const ProductsTab = ({
                     Rs. {p.price}
                   </td>
                   <td
-                    className={`py-4 px-4 border-r font-semibold text-sm ${p.stock <= 0 ? "text-red-500" : p.stock < 10 ? "text-orange-500" : "text-green-600"}`}
+                    className={`py-4 px-4 border-r font-semibold text-sm ${p.stock <= 0 ? "text-red-500" : p.stock <= 10 ? "text-orange-500" : "text-green-600"}`}
                   >
                     {p.stock}
                     {p.stock <= 0 ? (
                       <span className="ml-2 text-[10px] font-black bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full border border-red-500/30 uppercase">
                         Out of Stock
                       </span>
-                    ) : p.stock < 10 ? (
+                    ) : p.stock <= 10 ? (
                       <span className="ml-2 text-[10px] font-black bg-orange-500/20 text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/30 uppercase">
                         Low Stock
                       </span>
-                    ) : p.stock > 100 ? (
+                    ) : p.stock >= 100 ? (
                       <span className="ml-2 text-[10px] font-black bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30 uppercase">
                         High Stock
                       </span>
@@ -196,12 +197,14 @@ const ProductsTab = ({
                       >
                         <Pencil size={18} />
                       </button>
-                      <button
-                        onClick={() => handleDeleteProduct(p._id || p.id)}
-                        className="hover:text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {userRole === 'superadmin' && (
+                        <button
+                          onClick={() => handleDeleteProduct(p._id || p.id)}
+                          className="hover:text-red-500 hover:bg-red-500/10 p-2 rounded-lg transition"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

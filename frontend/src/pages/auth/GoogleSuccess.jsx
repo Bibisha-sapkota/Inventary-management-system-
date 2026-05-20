@@ -1,60 +1,61 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { saveAuth } from '../../utils/auth'; // ⚠️ Check path: ../../utils/auth is correct here because inside auth folder
-import api from '../../api/axios';
+import { saveAuth } from '../../utils/auth';
+import axios from 'axios';
 
 export default function GoogleSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [showRestriction, setShowRestriction] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = searchParams.get('token');
-    const userString = searchParams.get('user');
     const isNew = searchParams.get('isNew') === 'true';
 
-    if (token && userString) {
-      const user = JSON.parse(decodeURIComponent(userString));
-      saveAuth(token, user);
+    if (!token) {
+      navigate('/login');
+      return;
+    }
 
-      if (isNew) {
-        // If it's a new account from Google, we don't allow them to choose a role.
-        // We show a restriction message instead.
-        setLoading(false);
-        setShowRoleSelection(true); // Reusing this state to show restriction message
-      } else {
-        if (user.role === 'superadmin') navigate('/superadmin');
-        else if (user.role === 'admin') navigate('/admin');
-        else navigate('/customer');
+    // Fetch user profile from API using the token
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const user = res.data;
+        const userData = {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          avatar: user.avatar
+        };
+
+        saveAuth(token, userData);
+
+        if (isNew && user.role !== 'superadmin' && user.role !== 'admin') {
+          setLoading(false);
+          setShowRestriction(true);
+        } else {
+          if (user.role === 'superadmin') navigate('/superadmin');
+          else if (user.role === 'admin') navigate('/admin');
+          else navigate('/customer');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+        navigate('/login');
       }
-    } else {
-      navigate('/login');
-    }
+    };
+
+    fetchUser();
   }, [searchParams, navigate]);
-
-  const handleRoleSelect = async (role) => {
-    try {
-      setLoading(true);
-      await api.put('/auth/update-role', { role });
-
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      storedUser.role = role;
-      localStorage.setItem('user', JSON.stringify(storedUser));
-
-      if (role === 'superadmin') navigate('/superadmin');
-      else if (role === 'admin') navigate('/admin');
-      else navigate('/customer');
-      
-    } catch (error) {
-      alert("Failed to update role. Please login again.");
-      navigate('/login');
-    }
-  };
 
   if (loading) return <div className="text-center mt-20 font-bold text-orange-600">Processing Login...</div>;
 
-  if (showRoleSelection) {
+  if (showRestriction) {
     return (
       <div className="fixed inset-0 bg-[#0B1120] flex items-center justify-center p-6 font-sans">
         <div className="bg-white rounded-[3rem] w-full max-w-lg p-12 text-center shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-500 relative overflow-hidden">

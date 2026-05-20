@@ -603,6 +603,7 @@ const AdminDashboard = ({ initialTab }) => {
             handleDeleteProduct={handlers.handleDeleteProduct} settings={settings}
             currentPage={pages.products}
             onPageChange={(p) => setPages({ ...pages, products: p })}
+            userRole={profile?.role || getUser()?.role || "admin"}
           />
         )}
 
@@ -616,6 +617,7 @@ const AdminDashboard = ({ initialTab }) => {
             handleDeleteProduct={handlers.handleDeleteProduct} settings={settings}
             currentPage={pages.products}
             onPageChange={(p) => setPages({ ...pages, products: p })}
+            userRole={profile?.role || getUser()?.role || "admin"}
           />
         )}
 
@@ -701,6 +703,7 @@ const AdminDashboard = ({ initialTab }) => {
             handleDeleteProduct={handlers.handleDeleteProduct}
             currentPage={pages.suppliers}
             onPageChange={(p) => setPages({ ...pages, suppliers: p })}
+            userRole={profile?.role || getUser()?.role || "admin"}
           />
         )}
 

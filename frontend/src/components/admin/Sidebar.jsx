@@ -87,6 +87,30 @@ const Sidebar = ({
             />
           )}
 
+          {("products product list product view").includes(s) && (
+            <li>
+              <button
+                onClick={() => setProductMenuOpen(!productMenuOpen)}
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all uppercase text-xs font-black tracking-widest ${activeTab === "productList" || activeTab === "productView"
+                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-white/10"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
+                  }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Package size={20} />
+                  <span>Products</span>
+                </span>
+                {productMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              {(productMenuOpen || s) && (
+                <ul className="mt-1 ml-6 space-y-1">
+                  {("product list").includes(s) && <SidebarSubItem label="Product List" active={activeTab === "productList"} onClick={() => switchTab("productList")} />}
+                  {("product view").includes(s) && <SidebarSubItem label="Product View" active={activeTab === "productView"} onClick={() => switchTab("productView")} />}
+                </ul>
+              )}
+            </li>
+          )}
+
           {("orders order details add order").includes(s) && (
             <li>
               <button
@@ -205,29 +229,7 @@ const Sidebar = ({
             </li>
           )}
 
-          {("products product list product view").includes(s) && (
-            <li>
-              <button
-                onClick={() => setProductMenuOpen(!productMenuOpen)}
-                className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all uppercase text-xs font-black tracking-widest ${activeTab === "productList" || activeTab === "productView"
-                  ? "bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)] border border-white/10"
-                  : "text-slate-400 hover:bg-white/5 hover:text-white"
-                  }`}
-              >
-                <span className="flex items-center gap-3">
-                  <Package size={20} />
-                  <span>Products</span>
-                </span>
-                {productMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-              {(productMenuOpen || s) && (
-                <ul className="mt-1 ml-6 space-y-1">
-                  {("product list").includes(s) && <SidebarSubItem label="Product List" active={activeTab === "productList"} onClick={() => switchTab("productList")} />}
-                  {("product view").includes(s) && <SidebarSubItem label="Product View" active={activeTab === "productView"} onClick={() => switchTab("productView")} />}
-                </ul>
-              )}
-            </li>
-          )}
+
 
 
           {("reports").includes(s) && (

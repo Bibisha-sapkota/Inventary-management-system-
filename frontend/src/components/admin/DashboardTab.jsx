@@ -91,7 +91,7 @@ const DashboardTab = ({
       >
         <div className="relative z-10">
           <h2 className="text-3xl font-extrabold mb-2 uppercase text-gray-900">
-            Welcome back, <span className="text-emerald-600">{profile?.role || 'Admin'} {profile?.name || 'User'}!</span>
+            Welcome back, <span className="text-emerald-600">{profile?.role === 'admin' ? 'Admin User' : (profile?.role || 'Admin')} {profile?.name || 'User'}!</span>
           </h2>
           <p className="opacity-90">
             Here's what's happening with your store today.
@@ -169,7 +169,7 @@ const DashboardTab = ({
                   <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
                     {p.category}
                   </span>
-                  <span className={`text-[10px] font-bold ${p.stock < 10 ? 'text-red-500' : 'text-gray-500'}`}>
+                  <span className={`text-[10px] font-bold ${p.stock <= 10 ? 'text-red-500' : 'text-gray-500'}`}>
                     Stock: {p.stock}
                   </span>
                 </div>

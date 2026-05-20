@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { createNotificationInternal } = require('./notificationController');
 const checkStockAlerts = require('../utils/checkStockAlerts');
 const { logActivity } = require('../utils/logger');
@@ -11,9 +12,13 @@ const getAllProducts = async (req, res) => {
         // Build base visibility filter
         let baseFilter = {};
         if (req.user.role === 'admin') {
+            const superAdmins = await User.find({ role: 'superadmin' }).select('_id');
+            const superAdminIds = superAdmins.map(admin => admin._id);
+
             baseFilter.$or = [
                 { createdBy: req.user._id },
-                { isGlobal: true }
+                { isGlobal: true },
+                { createdBy: { $in: superAdminIds } }
             ];
         }
 
@@ -189,6 +194,12 @@ const updateProduct = async (req, res) => {
 // Delete Product
 const deleteProduct = async (req, res) => {
     try {
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not authorized to delete products. Only superadmins can delete.'
+            });
+        }
         const product = await Product.findByIdAndDelete(req.params.id);
 
         if (!product) {
@@ -227,7 +238,14 @@ const getStats = async (req, res) => {
     try {
         let query = {};
         if (req.user.role === 'admin') {
-            query.$or = [{ createdBy: req.user._id }, { isGlobal: true }];
+            const superAdmins = await User.find({ role: 'superadmin' }).select('_id');
+            const superAdminIds = superAdmins.map(admin => admin._id);
+            
+            query.$or = [
+                { createdBy: req.user._id },
+                { isGlobal: true },
+                { createdBy: { $in: superAdminIds } }
+            ];
         }
         
         const totalProducts = await Product.countDocuments(query);

@@ -99,6 +99,10 @@ const updateSupplier = async (req, res) => {
 // @access  Private
 const deleteSupplier = async (req, res) => {
     try {
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({ success: false, message: 'Only superadmin can delete suppliers' });
+        }
+
         const supplier = await Supplier.findByIdAndDelete(req.params.id);
         if (!supplier) return res.status(404).json({ success: false, message: 'Supplier not found' });
         res.status(200).json({

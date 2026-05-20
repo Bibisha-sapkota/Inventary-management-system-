@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, ChevronDown, Receipt, Scan, Eye, Download, Printer, Trash2, Search } from "lucide-react";
 import { Pagination } from "./AdminUI";
+import { getUser } from "../../utils/auth";
 
 const InvoicesTab = ({
   invoices,
@@ -22,6 +23,15 @@ const InvoicesTab = ({
 }) => {
   const PAGE_SIZE = 10;
   const paginatedInvoices = invoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const currentUser = getUser();
+  const currentUserId = currentUser?._id || currentUser?.id;
+  
+  const myInvoices = invoices.filter(inv => {
+    const creatorId = inv.createdBy || inv.user;
+    // Check both object and string representations if possible, but standard is direct match
+    return creatorId === currentUserId || (creatorId && creatorId._id === currentUserId) || creatorId?.toString() === currentUserId;
+  });
 
   return (
     <div className={`${cardClass} rounded-2xl shadow-sm overflow-hidden`}>
@@ -84,7 +94,7 @@ const InvoicesTab = ({
               Total Invoices
             </p>
             <p className="text-2xl font-bold mt-1">
-              {invoices.length}
+              {myInvoices.length}
             </p>
           </div>
           <div className="bg-green-50 text-green-800 rounded-xl p-4 border border-green-100">
@@ -93,7 +103,7 @@ const InvoicesTab = ({
             </p>
             <p className="text-2xl font-bold mt-1">
               Rs.{" "}
-              {invoices
+              {myInvoices
                 .reduce((sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || 0)), 0)
                 .toFixed(2)}
             </p>
@@ -104,12 +114,12 @@ const InvoicesTab = ({
             </p>
             <p className="text-2xl font-bold mt-1">
               Rs.{" "}
-              {invoices.length
+              {myInvoices.length
                 ? (
-                  invoices.reduce(
+                  myInvoices.reduce(
                     (sum, inv) => sum + (parseFloat(inv.totalAmount || inv.amount || 0)),
                     0
-                  ) / invoices.length
+                  ) / myInvoices.length
                 ).toFixed(2)
                 : "0.00"}
             </p>

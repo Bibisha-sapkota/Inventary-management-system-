@@ -94,16 +94,8 @@ router.get('/google/callback',
         // ⚠️ Check if user is NEW (Created within last 30 seconds)
         const isNewUser = req.user.createdAt > new Date(Date.now() - 30 * 1000);
 
-        const userData = encodeURIComponent(JSON.stringify({
-            id: req.user._id,
-            name: req.user.name,
-            email: req.user.email,
-            role: req.user.role,
-            avatar: req.user.avatar
-        }));
-
-        // Send isNew flag to frontend
-        res.redirect(`${process.env.FRONTEND_URL}/auth-success?token=${token}&user=${userData}&isNew=${isNewUser}`);
+        // Only pass token and isNew flag to avoid HTTP 431 (URL too long)
+        res.redirect(`${process.env.FRONTEND_URL}/auth-success?token=${token}&isNew=${isNewUser}`);
     }
 );
 

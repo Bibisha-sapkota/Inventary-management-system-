@@ -24,7 +24,8 @@ const SuppliersTab = ({
   cardClass,
   currentPage,
   onPageChange,
-  fetchData
+  fetchData,
+  userRole
 }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [viewMode, setViewMode] = React.useState("cards");
@@ -69,6 +70,31 @@ const SuppliersTab = ({
     }
   };
 
+  // --- Global Sales Calculation ---
+  const globalProductSales = {};
+  (products || []).forEach(p => {
+    globalProductSales[p._id] = 0;
+  });
+
+  if (invoices && invoices.length > 0) {
+    invoices.forEach(inv => {
+      const items = inv.itemsList || inv.items || [];
+      items.forEach(item => {
+        const itemProd = item.product?._id || item.product;
+        if (!itemProd) return;
+        
+        const matchedProduct = (products || []).find(p =>
+          p._id === itemProd ||
+          (p.name && p.name.toLowerCase().trim() === itemProd.toString().toLowerCase().trim())
+        );
+
+        if (matchedProduct) {
+          globalProductSales[matchedProduct._id] += Number(item.qty || 0);
+        }
+      });
+    });
+  }
+
   // --- Dynamic calculations for supplier detail view ---
   let totalItemsManaged = 0;
   let totalStockInHand = 0;
@@ -83,37 +109,10 @@ const SuppliersTab = ({
         (p.supplierName && selectedSupplierForLots.name && p.supplierName.toLowerCase().trim() === selectedSupplierForLots.name.toLowerCase().trim())
     );
 
-    const productSales = {};
-    supplierProducts.forEach((p) => {
-      productSales[p._id] = 0;
-    });
-
-    if (invoices && invoices.length > 0) {
-      invoices.forEach((inv) => {
-        const items = inv.itemsList || inv.items || [];
-        if (items.length > 0) {
-          items.forEach((item) => {
-            const itemProd = item.product?._id || item.product;
-            if (!itemProd) return;
-
-            // Find if this invoice item matches any product from this supplier
-            const matchedProduct = supplierProducts.find(p =>
-              p._id === itemProd ||
-              (p.name && p.name.toLowerCase().trim() === itemProd.toString().toLowerCase().trim())
-            );
-
-            if (matchedProduct) {
-              productSales[matchedProduct._id] += Number(item.qty || 0);
-            }
-          });
-        }
-      });
-    }
-
     totalItemsManaged = supplierProducts.length;
 
     productRows = supplierProducts.map((p) => {
-      const sold = productSales[p._id] || 0;
+      const sold = globalProductSales[p._id] || 0;
       const remaining = Number(p.stock || 0);
       const quantity = sold + remaining;
 
@@ -123,8 +122,8 @@ const SuppliersTab = ({
       const sellPrice = Number(p.price || 0);
 
       const totalBuy = quantity * buyPrice;
-      const totalSell = sold * sellPrice;
-      const profit = sold > 0 ? sold * (sellPrice - buyPrice) : 0;
+      const totalSell = quantity * sellPrice;
+      const profit = totalSell - totalBuy;
 
       totalBuyAmount += totalBuy;
       totalSellAmount += totalSell;
@@ -235,7 +234,7 @@ const SuppliersTab = ({
       </div>
 
       {!selectedSupplierForLots && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 animate-in slide-in-from-top-4 duration-1000">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-1000">
           {(() => {
             let totalBuy = 0;
             let totalSell = 0;
@@ -249,7 +248,8 @@ const SuppliersTab = ({
                 const matches = (p.supplier && p.supplier === s._id) ||
                   (p.supplierName && s.name && p.supplierName.toLowerCase().trim() === s.name.toLowerCase().trim());
                 if (matches) {
-                  const qty = (Number(p.stock) || 0);
+                  const sold = globalProductSales[p._id] || 0;
+                  const qty = (Number(p.stock) || 0) + sold;
                   const buyVal = qty * (Number(p.buyingPrice) || Number(p.price) || 0);
                   supplierBuyAmount += buyVal;
                   totalBuy += buyVal;
@@ -272,11 +272,6 @@ const SuppliersTab = ({
                   <h3 className="text-3xl font-black tracking-tighter text-emerald-600">Rs. {totalBuy.toLocaleString()}</h3>
                 </div>
 
-                <div className={`${cardClass} p-8 rounded-[2.5rem] border border-blue-500/20 dark:border-blue-500/30 shadow-2xl shadow-blue-500/5 flex flex-col justify-center gap-2 group hover:border-blue-500/50 transition-all overflow-hidden relative`}>
-                  <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-all" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-35 text-blue-600">Total Retail Value (Sell)</p>
-                  <h3 className="text-3xl font-black tracking-tighter text-blue-600">Rs. {totalSell.toLocaleString()}</h3>
-                </div>
 
                 <div className={`${cardClass} p-8 rounded-[2.5rem] border border-purple-500/20 dark:border-purple-500/30 shadow-2xl shadow-purple-500/5 flex flex-col justify-center gap-2 group hover:border-purple-500/50 transition-all overflow-hidden relative`}>
                   <div className="absolute right-0 top-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-purple-500/10 transition-all" />
@@ -358,8 +353,10 @@ const SuppliersTab = ({
                       );
                       let sBuy = 0; let sSell = 0;
                       supplierProducts.forEach(p => {
-                        sBuy += (Number(p.stock) || 0) * (Number(p.buyingPrice) || Number(p.price) || 0);
-                        sSell += (Number(p.stock) || 0) * (Number(p.price) || 0);
+                        const sold = globalProductSales[p._id] || 0;
+                        const qty = (Number(p.stock) || 0) + sold;
+                        sBuy += qty * (Number(p.buyingPrice) || Number(p.price) || 0);
+                        sSell += qty * (Number(p.price) || 0);
                       });
                       const sProfit = sSell - sBuy;
 
@@ -398,12 +395,14 @@ const SuppliersTab = ({
                     >
                       <Pencil size={14} /> Edit Profile
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s._id); }}
-                      className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-rose-100 transition-all shadow-sm"
-                    >
-                      <Trash2 size={14} /> Remove
-                    </button>
+                    {userRole === 'superadmin' && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s._id); }}
+                        className="flex items-center justify-center gap-2 bg-rose-50 text-rose-600 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-rose-100 transition-all shadow-sm"
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleUpdateSupplierStatus(s._id, s.status === 'Active' ? 'Inactive' : 'Active'); }}
                       className={`flex items-center justify-center gap-2 py-3 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all shadow-lg ${s.status === 'Active' ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/10' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/10'
@@ -445,8 +444,10 @@ const SuppliersTab = ({
                   );
                   let sBuy = 0; let sSell = 0;
                   supplierProducts.forEach(p => {
-                    sBuy += (Number(p.stock) || 0) * (Number(p.buyingPrice) || Number(p.price) || 0);
-                    sSell += (Number(p.stock) || 0) * (Number(p.price) || 0);
+                    const sold = globalProductSales[p._id] || 0;
+                    const qty = (Number(p.stock) || 0) + sold;
+                    sBuy += qty * (Number(p.buyingPrice) || Number(p.price) || 0);
+                    sSell += qty * (Number(p.price) || 0);
                   });
                   const sProfit = sSell - sBuy;
 
@@ -529,13 +530,15 @@ const SuppliersTab = ({
                           >
                             {s.status === 'Active' ? <Ban size={18} /> : <ShieldCheck size={18} />}
                           </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s._id); }}
-                            className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition-all hover:scale-110"
-                            title="Remove Partner"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                          {userRole === 'superadmin' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s._id); }}
+                              className="p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition-all hover:scale-110"
+                              title="Remove Partner"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

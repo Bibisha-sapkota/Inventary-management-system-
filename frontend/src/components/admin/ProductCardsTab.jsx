@@ -13,7 +13,8 @@ const ProductCardsTab = ({
   settings,
   lowStockThreshold,
   currentPage,
-  onPageChange
+  onPageChange,
+  userRole
 }) => {
   const PAGE_SIZE = 12;
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -65,8 +66,8 @@ const ProductCardsTab = ({
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <span className={`absolute top-3 right-3 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase ${p.stock > 100 ? 'bg-indigo-500' : p.stock >= 10 ? 'bg-emerald-500' : p.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
-                {p.stock > 100 ? 'High Stock' : p.stock >= 10 ? 'In Stock' : p.stock > 0 ? 'Low Stock' : 'Out of Stock ⚠️'}
+              <span className={`absolute top-3 right-3 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg uppercase ${p.stock >= 100 ? 'bg-indigo-500' : p.stock > 10 ? 'bg-emerald-500' : p.stock > 0 ? 'bg-amber-500' : 'bg-red-500'}`}>
+                {p.stock >= 100 ? 'High Stock' : p.stock > 10 ? 'In Stock' : p.stock > 0 ? 'Low Stock' : 'Out of Stock ⚠️'}
               </span>
               <span className={`absolute top-3 left-3 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md ${p.status === "Active" ? "bg-gradient-to-r from-emerald-500 to-green-600" : "bg-gray-500"}`}>
                 {p.status}
@@ -141,12 +142,14 @@ const ProductCardsTab = ({
                 >
                   <Pencil size={14} /> Edit
                 </button>
-                <button
-                  onClick={() => handleDeleteProduct(p._id || p.id)}
-                  className="flex-1 px-3 py-2.5 rounded-lg bg-gradient-to-r from-red-400 to-red-500 text-white hover:from-red-500 hover:to-red-600 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
+                {userRole === 'superadmin' && (
+                  <button
+                    onClick={() => handleDeleteProduct(p._id || p.id)}
+                    className="flex-1 px-3 py-2.5 rounded-lg bg-gradient-to-r from-red-400 to-red-500 text-white hover:from-red-500 hover:to-red-600 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg"
+                  >
+                    <Trash2 size={14} /> Delete
+                  </button>
+                )}
               </div>
             </div>
           </div>

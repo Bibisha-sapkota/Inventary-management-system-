@@ -17,13 +17,8 @@ const getInvoices = async (req, res) => {
         let query = {};
         if (req.user.role === 'superadmin') {
             query = {};
-        } else if (req.user.role === 'admin') {
-            // Admins should see their own invoices and invoices created by superadmins
-            const User = require('../models/User');
-            const superadmins = await User.find({ role: 'superadmin' }, { _id: 1 }).lean();
-            const superadminIds = superadmins.map(s => s._id);
-            query = { $or: [{ createdBy: req.user._id }, { createdBy: { $in: superadminIds } }] };
         } else {
+            // Admins and others should only see their own invoices
             query = { createdBy: req.user._id };
         }
         const invoices = await Invoice.find(query).sort({ createdAt: -1 });
