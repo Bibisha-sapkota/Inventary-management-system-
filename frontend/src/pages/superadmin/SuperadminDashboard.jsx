@@ -1167,10 +1167,7 @@ export default function SuperadminDashboard() {
           {/* Third Row: Financials */}
           {(() => {
             const totalInventory = data.products.reduce((acc, p) => acc + ((Number(p.stock) || 0) * (Number(p.buyingPrice) || Number(p.price) || 0)), 0);
-            const totalSales = data.invoices.reduce((acc, inv) => {
-              if (!inv.itemsList) return acc;
-              return acc + inv.itemsList.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.price) || 0)), 0);
-            }, 0);
+            const totalSales = data.invoices.reduce((acc, inv) => acc + (Number(inv.totalAmount) || 0), 0);
             const totalCost = data.invoices.reduce((acc, inv) => {
               if (!inv.itemsList) return acc;
               return acc + inv.itemsList.reduce((sum, item) => {
