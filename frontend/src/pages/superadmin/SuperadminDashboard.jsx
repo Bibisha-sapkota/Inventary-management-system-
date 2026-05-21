@@ -990,7 +990,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("dashboard"); setSidebarOpen(false); }} className={navItemClass("dashboard")}>
                 <span className="flex items-center gap-3"><LayoutDashboard size={20} /><span>Overview</span></span>
-                {tab === "dashboard" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
 
@@ -1012,7 +1012,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("usermanagement"); setSidebarOpen(false); }} className={navItemClass("usermanagement")}>
                 <span className="flex items-center gap-3"><ShieldCheck size={20} /><span>User Management</span></span>
-                {tab === "usermanagement" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
 
@@ -1090,7 +1090,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("reports"); setSidebarOpen(false); }} className={navItemClass("reports")}>
                 <span className="flex items-center gap-3"><FileText size={20} /><span>Reports</span></span>
-                {tab === "reports" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
 
@@ -1098,7 +1098,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("notifications"); setSidebarOpen(false); }} className={navItemClass("notifications")}>
                 <span className="flex items-center gap-3"><Bell size={20} /><span>Notifications</span></span>
-                {tab === "notifications" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
 
@@ -1106,7 +1106,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("promotions"); setSidebarOpen(false); }} className={navItemClass("promotions")}>
                 <span className="flex items-center gap-3"><ImageIcon size={20} /><span>Banner Promotion</span></span>
-                {tab === "promotions" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
 
@@ -1114,7 +1114,7 @@ export default function SuperadminDashboard() {
             <li>
               <button onClick={() => { setTab("settings"); setSidebarOpen(false); }} className={navItemClass("settings")}>
                 <span className="flex items-center gap-3"><Settings size={20} /><span>System Settings</span></span>
-                {tab === "settings" && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#10b981]" />}
+
               </button>
             </li>
           </ul>
