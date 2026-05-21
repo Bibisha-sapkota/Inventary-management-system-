@@ -281,7 +281,7 @@ const AdminDashboard = ({ initialTab }) => {
       buyingPrice: 0,
       price: 0,
       stock: 0,
-      maxStock: 10,
+      maxStock: 100,
       expiryDate: "",
       status: "Active",
       image: "",

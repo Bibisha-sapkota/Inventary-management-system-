@@ -139,7 +139,7 @@ export default function SuperadminDashboard() {
   const [editSupplierId, setEditSupplierId] = useState(null);
   const [supplierFormData, setSupplierFormData] = useState({ name: "", contactPerson: "", email: "", phone: "", address: "", category: "Regular", status: "Active", amountPaid: 0 });
   const [showProductForm, setShowProductForm] = useState(false);
-  const [productFormData, setProductFormData] = useState({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 10, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
+  const [productFormData, setProductFormData] = useState({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 100, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [orderFormData, setOrderFormData] = useState({ sno: "", customer: "", email: "", phone: "", product: "", amount: 0, status: "Pending", date: new Date().toISOString().split('T')[0], quantity: 1 });
   // Sidebar expand states
@@ -671,7 +671,7 @@ export default function SuperadminDashboard() {
           buyingPrice: found.buyingPrice || found.purchasePrice || 0,
           price: found.price || 0,
           stock: found.stock || 0,
-          maxStock: found.maxStock || 10,
+          maxStock: found.maxStock || 100,
           expiryDate: found.expiryDate ? found.expiryDate.substring(0, 10) : "",
           status: found.status || "Active",
           image: found.image || "",
@@ -679,7 +679,7 @@ export default function SuperadminDashboard() {
           supplierName: found.supplierName || ""
         });
       } else {
-        setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 10, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
+        setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 100, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
       }
       setShowProductForm(true);
       return;
@@ -796,7 +796,7 @@ export default function SuperadminDashboard() {
       if (res.ok) {
         alert(isEdit ? "Product updated successfully!" : "Product added successfully!");
         setShowProductForm(false);
-        setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 10, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
+        setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 100, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
         fetchAll();
       } else {
         alert("Error: " + (json.message || "Failed to save product"));
@@ -1136,10 +1136,6 @@ export default function SuperadminDashboard() {
   const renderTab = () => {
     const user = getUser();
     const recentProducts = [...data.products]
-      .filter(p => {
-        const owner = admins.find(a => a._id === p.createdBy);
-        return !owner || owner.role === 'superadmin' || p.addedByRole === 'superadmin' || p.isGlobal;
-      })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 10);
     switch (tab) {
@@ -1203,7 +1199,7 @@ export default function SuperadminDashboard() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-black tracking-tight text-gray-900 mb-1 uppercase">Recently Added Products</h3>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest SKU updates by Superadmin</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest SKU updates across the system</p>
               </div>
               <button
                 onClick={() => setTab("products")}
@@ -1216,7 +1212,7 @@ export default function SuperadminDashboard() {
               {recentProducts.length === 0 ? (
                 <div className="bg-gray-50 rounded-[2rem] p-10 text-center w-full border border-dashed border-gray-200">
                   <Package size={48} className="mx-auto text-gray-300 mb-4" />
-                  <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No products registered by Superadmin yet</p>
+                  <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No products registered yet</p>
                 </div>
               ) : (
                 recentProducts.map((p, idx) => (
@@ -2902,7 +2898,7 @@ export default function SuperadminDashboard() {
         showProductForm={showProductForm}
         setShowProductForm={(v) => {
           setShowProductForm(v);
-          if (!v) setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 10, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
+          if (!v) setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 100, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
         }}
         productFormData={productFormData}
         setProductFormData={setProductFormData}

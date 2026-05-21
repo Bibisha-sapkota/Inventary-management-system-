@@ -63,7 +63,7 @@ const checkStockAlerts = async (product, adminUser) => {
         }
 
         // 2. Check High Stock
-        if (product.stock >= product.maxStock && product.maxStock > 0) {
+        if (Number(product.stock) > Number(product.maxStock) && Number(product.maxStock) > 0) {
             // Internal Notification
             await createNotificationInternal(
                 adminId,
