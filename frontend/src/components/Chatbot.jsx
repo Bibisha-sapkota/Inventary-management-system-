@@ -10,11 +10,11 @@ const Chatbot = ({ darkMode, externalOpen, setExternalOpen, initialMessage, cont
   const isCustomer = role === 'customer';
   // USER REQUESTED GREEN THEME
   const themeColor = 'from-green-500 to-emerald-600';
-  const botTitle = isCustomer ? 'Stockly Support' : 'Inventory Assistant';
+  const botTitle = isCustomer ? 'Grocery Stock Support' : 'Inventory Assistant';
   const botStatus = isCustomer ? 'Customer Expert • Online' : 'Smart AI • Online';
   const welcomeMsg = isCustomer
-    ? 'Welcome to Stockly! I am here to help you with your shopping. How can I assist you today?'
-    : 'Hi! I am your Stock Inventory Assistant. How can I help you manage your store today?';
+    ? 'Welcome to Grocery Stock! I am here to help you with your shopping. How can I assist you today?'
+    : 'Hi! I am your Grocery Stock Inventory Assistant. How can I help you manage your store today?';
 
   const [chatHistory, setChatHistory] = useState([
     { role: 'assistant', content: welcomeMsg }
@@ -246,7 +246,7 @@ const Chatbot = ({ darkMode, externalOpen, setExternalOpen, initialMessage, cont
                 <div className={`p-4 rounded-2xl border text-center ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100 shadow-sm'}`}>
                   <Mail size={20} className="mx-auto mb-2 text-green-500" />
                   <p className="text-[10px] font-bold text-gray-400 uppercase">Email</p>
-                  <p className={`text-xs font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>sock@outlook.com</p>
+                  <p className={`text-xs font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>support@grocerystock.com</p>
                 </div>
               </div>
 

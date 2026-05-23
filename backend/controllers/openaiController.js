@@ -13,7 +13,7 @@ exports.getChatResponse = async (req, res) => {
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
-          { role: "system", content: `You are an inventory assistant. Context: ${context}` },
+          { role: "system", content: `You are an expert inventory assistant for Grocery Stock. Use the following context to answer the user's questions comprehensively and professionally. Be very helpful. Context: ${context}` },
           { role: "user", content: message }
         ],
         max_tokens: 150,
@@ -21,14 +21,25 @@ exports.getChatResponse = async (req, res) => {
       return res.status(200).json({ success: true, data: response.choices[0].message.content });
     } catch (apiError) {
       // Fallback mode activated silently
-      let mockResponse = "I've analyzed your live dashboard data. How can I help you today?";
+      let mockResponse = "";
       const getNum = (regex) => {
         const match = (context || "").match(regex);
         return match ? match[1] : "0";
       };
 
-      // 1. TOP / BEST PRODUCTS
-      if (lowerMsg.includes('top') || lowerMsg.includes('best') || lowerMsg.includes('most sold') || lowerMsg.includes('most popular')) {
+      // 1. GREETINGS & THANKS
+      if (lowerMsg.includes('hi') || lowerMsg.includes('hello') || lowerMsg.includes('hey') || lowerMsg.includes('namaste')) {
+        mockResponse = "Hello! 👋 I'm your Grocery Stock AI Assistant. How can I help you manage your store today?";
+      }
+      else if (lowerMsg.includes('thank') || lowerMsg.includes('dhanyabad')) {
+        mockResponse = "You're very welcome! Let me know if you need anything else.";
+      }
+      // 2. HELP & FEATURES
+      else if (lowerMsg.includes('help') || lowerMsg.includes('what can you do') || lowerMsg.includes('features')) {
+        mockResponse = "I can help you with a lot of things! Try asking me about: \n- Top products\n- Low stock items\n- Total revenue\n- Categories\n- Most expensive or cheapest items";
+      }
+      // 3. TOP / BEST PRODUCTS
+      else if (lowerMsg.includes('top') || lowerMsg.includes('best') || lowerMsg.includes('most sold') || lowerMsg.includes('most popular')) {
         const productListStr = (context || "").match(/Product Details[^:]+:\s*([^$]+)/);
         if (productListStr && productListStr[1].trim()) {
           const items = productListStr[1].split(' ; ').slice(0, 3).map(raw => raw.split('|')[0]);
@@ -37,8 +48,7 @@ exports.getChatResponse = async (req, res) => {
           mockResponse = "I recommend checking your 'Reports' section for a full breakdown of your best-selling items!";
         }
       }
-      
-      // 2. CATEGORIES
+      // 4. CATEGORIES
       else if (lowerMsg.includes('category') || lowerMsg.includes('categories') || lowerMsg.includes('type')) {
         const productListStr = (context || "").match(/Product Details[^:]+:\s*([^$]+)/);
         let foundCats = [];
@@ -51,8 +61,7 @@ exports.getChatResponse = async (req, res) => {
           mockResponse = "We have several categories: General, Produce, Dairy, Bakery, Grains, Grocery, Meat, Beverages, and Snacks.";
         }
       }
-
-      // 3. PRICES (CHEAPEST / EXPENSIVE)
+      // 5. PRICES (CHEAPEST / EXPENSIVE)
       else if (lowerMsg.includes('cheap') || lowerMsg.includes('expensive') || lowerMsg.includes('costly') || lowerMsg.includes('price')) {
         const productListStr = (context || "").match(/Product Details[^:]+:\s*([^$]+)/);
         if (productListStr && productListStr[1].trim()) {
@@ -71,9 +80,9 @@ exports.getChatResponse = async (req, res) => {
             }
           }
         }
+        if (!mockResponse) mockResponse = "I couldn't fetch price details right now.";
       }
-
-      // 4. CUSTOMERS & SUPPLIERS
+      // 6. CUSTOMERS & SUPPLIERS
       else if (lowerMsg.includes('customer')) {
         const count = getNum(/Total Customers:\s?(\d+)/);
         mockResponse = `You currently have a total of ${count} registered customers in your database.`;
@@ -82,8 +91,7 @@ exports.getChatResponse = async (req, res) => {
         const count = getNum(/Total Suppliers:\s?(\d+)/);
         mockResponse = `You are working with ${count} active suppliers at the moment.`;
       }
-
-      // 5. STOCK & INVENTORY
+      // 7. STOCK & INVENTORY
       else if (lowerMsg.includes('stock') || lowerMsg.includes('low')) {
         const productListStr = (context || "").match(/Product Details[^:]+:\s*([^$]+)/);
         const lowStockItems = [];
@@ -114,17 +122,26 @@ exports.getChatResponse = async (req, res) => {
           mockResponse = `There are ${total} unique products in your inventory.`;
         }
       }
-
-      // 6. REVENUE
-      else if (lowerMsg.includes('revenue') || lowerMsg.includes('money') || lowerMsg.includes('sale')) {
+      // 8. REVENUE
+      else if (lowerMsg.includes('revenue') || lowerMsg.includes('money') || lowerMsg.includes('sale') || lowerMsg.includes('earning')) {
         const rev = (context || "").match(/Total Revenue:\s?Rs\.\s?([\d,]+)/);
-        mockResponse = rev ? `Your total revenue stands at Rs. ${rev[1]}.` : "Revenue data is currently being updated.";
+        mockResponse = rev ? `Your total revenue stands at Rs. ${rev[1]}. Great job!` : "Revenue data is currently being updated.";
       }
-
-      // 7. SUPPORT & GREETINGS
-      else if (lowerMsg.includes('return')) mockResponse = "Returns are allowed within 7 days. Contact sock@outlook.com for help!";
+      // 9. OFFERS & DISCOUNTS
+      else if (lowerMsg.includes('offer') || lowerMsg.includes('discount') || lowerMsg.includes('promotion')) {
+        mockResponse = "Currently, we have some great deals! Check the offers on your dashboard for the latest discounts and promotions.";
+      }
+      // 10. AGREEMENT / OK
+      else if (lowerMsg === 'ok' || lowerMsg === 'okay' || lowerMsg.includes('alright') || lowerMsg.includes('sure')) {
+        mockResponse = "Great! Let me know if you need help with anything else.";
+      }
+      // 11. SUPPORT
+      else if (lowerMsg.includes('return')) mockResponse = "Returns are allowed within 7 days. Contact support@grocerystock.com for help!";
       else if (lowerMsg.includes('track')) mockResponse = "Track your order in the 'Order History' tab!";
-      else if (lowerMsg.includes('hi') || lowerMsg.includes('hello')) mockResponse = "Hello! 👋 I'm your Stockly AI. How can I help you today?";
+      // 12. DEFAULT FALLBACK
+      else {
+        mockResponse = "I'm not entirely sure about that. Try asking me about 'low stock', 'top products', or 'revenue' instead!";
+      }
 
       return res.status(200).json({ success: true, data: mockResponse });
     }
