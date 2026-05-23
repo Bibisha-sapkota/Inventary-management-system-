@@ -14,7 +14,7 @@ export function useOrders() {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       };
       // Fetch user's orders (Force customer view to see what we BOUGHT)
-      const res = await axios.get('http://localhost:5000/api/orders?view=customer', config);
+      const res = await axios.get('https://inventory-backend-u3bi.onrender.com/api/orders?view=customer', config);
       
       // The backend returns an array of objects. 
       // Admin dashboard maps them differently, but we want to map them similarly here.
@@ -63,7 +63,7 @@ export function useOrders() {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
        };
 
-       const res = await axios.post('http://localhost:5000/api/orders/checkout', orderData, config);
+       const res = await axios.post('https://inventory-backend-u3bi.onrender.com/api/orders/checkout', orderData, config);
        if (res.data.success) {
           fetchOrders(); // Refresh to get the actual grouped invoice
        }

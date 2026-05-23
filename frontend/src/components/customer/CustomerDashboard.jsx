@@ -41,7 +41,7 @@ export default function CustomerDashboard() {
   // Handlers
   const fetchGlobalSettings = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/settings', {
+      const res = await axios.get('https://inventory-backend-u3bi.onrender.com/api/settings', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.data.success) {

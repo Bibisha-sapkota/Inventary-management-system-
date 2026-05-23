@@ -18,7 +18,7 @@ export default function ExchangesTab({ profile, products, orders, refreshProduct
     membershipId: ""
   });
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+  const API_URL = process.env.REACT_APP_API_URL || "https://inventory-backend-u3bi.onrender.com/api";
   const token = localStorage.getItem("token");
 
   useEffect(() => {

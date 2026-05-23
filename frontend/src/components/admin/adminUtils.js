@@ -114,7 +114,7 @@ export const generateSequentialInvoiceId = (existingInvoices = []) => {
   return `${prefix}${nextSerial}`;
 };
 
-export const API_URL = "http://localhost:5000/api";
+export const API_URL = "https://inventory-backend-u3bi.onrender.com/api";
 
 export const groupLogsByDate = (logs) => {
   const groups = {};

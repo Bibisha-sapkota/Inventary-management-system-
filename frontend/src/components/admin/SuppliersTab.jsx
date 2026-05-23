@@ -40,7 +40,7 @@ const SuppliersTab = ({
       const updatedAmountPaid = Number(supplier.amountPaid || 0) + Number(payAmt);
 
       const token = localStorage.getItem("token");
-      const url = `http://localhost:5000/api/suppliers/${supplierId}`;
+      const url = `https://inventory-backend-u3bi.onrender.com/api/suppliers/${supplierId}`;
       const res = await fetch(url, {
         method: "PUT",
         headers: {

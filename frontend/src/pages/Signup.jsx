@@ -38,7 +38,7 @@ export default function Signup() {
   };
 
   const handleGoogleSignup = () => {
-    window.location.href = 'http://localhost:5000/auth/google';
+    window.location.href = 'https://inventory-backend-u3bi.onrender.com/auth/google';
   };
 
   return (

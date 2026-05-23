@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://inventory-backend-u3bi.onrender.com/api/auth";
 
 export function useProfile() {
   const [profile, setProfile] = useState({

@@ -15,7 +15,7 @@ export function useProducts() {
       const config = {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       };
-      const res = await axios.get('http://localhost:5000/api/products', config);
+      const res = await axios.get('https://inventory-backend-u3bi.onrender.com/api/products', config);
       
       // Map backend products to match frontend expectations if necessary
       // Backend: _id, name, price, stock, description, category, image

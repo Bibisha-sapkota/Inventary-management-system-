@@ -22,7 +22,7 @@ const InquiryForm = ({ compact = false, onSuccess }) => {
         setStatus({ type: '', message: '' });
 
         try {
-            const res = await axios.post('http://localhost:5000/api/inquiries', formData);
+            const res = await axios.post('https://inventory-backend-u3bi.onrender.com/api/inquiries', formData);
             if (res.data.success) {
                 setStatus({ type: 'success', message: res.data.message });
                 setFormData({ name: '', email: '', phone: '', subject: 'Demo', message: '' });

@@ -26,7 +26,7 @@ import ProfileTab from "../../components/admin/ProfileTab";
 import Header from "../../components/admin/Header";
 import { StatCard, QuickActionBtn } from "../../components/admin/AdminUI";
 
-const API = "http://localhost:5000/api";
+const API = "https://inventory-backend-u3bi.onrender.com/api";
 const token = () => localStorage.getItem("token");
 const hdr = () => ({ Authorization: `Bearer ${token()}` });
 

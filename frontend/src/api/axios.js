@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getToken, clearAuth } from '../utils/auth';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'https://inventory-backend-u3bi.onrender.com/api',
     headers: {
         'Content-Type': 'application/json'
     }

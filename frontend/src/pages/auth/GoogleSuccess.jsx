@@ -21,7 +21,7 @@ export default function GoogleSuccess() {
     // Fetch user profile from API using the token
     const fetchUser = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/auth/profile', {
+        const res = await axios.get('https://inventory-backend-u3bi.onrender.com/api/auth/profile', {
           headers: { Authorization: `Bearer ${token}` }
         });
 

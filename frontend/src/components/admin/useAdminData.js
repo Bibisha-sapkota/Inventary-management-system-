@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export const API_URL = "http://localhost:5000/api";
+export const API_URL = "https://inventory-backend-u3bi.onrender.com/api";
 
 export const useAdminData = (token, navigate) => {
   const [loading, setLoading] = useState(true);
