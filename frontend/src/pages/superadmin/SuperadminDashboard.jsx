@@ -184,6 +184,11 @@ export default function SuperadminDashboard() {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState("US English");
 
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+
   const navigate = useNavigate();
   const user = getUser();
 
@@ -196,13 +201,13 @@ export default function SuperadminDashboard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('esewa_success')) {
-      alert('✅ eSewa Payment Successful!');
+      triggerToast('✅ eSewa Payment Successful!');
       const targetTab = params.get('tab') || 'invoices';
       setTab(targetTab);
       navigate('/superadmin', { replace: true });
     }
     if (params.get('esewa_failure')) {
-      alert('❌ eSewa Payment Failed!');
+      triggerToast('❌ eSewa Payment Failed!', 'error');
       const targetTab = params.get('tab') || 'invoices';
       setTab(targetTab);
       navigate('/superadmin', { replace: true });
@@ -213,6 +218,13 @@ export default function SuperadminDashboard() {
     if (settings.darkMode) document.documentElement.classList.add("dark");
     else document.documentElement.classList.remove("dark");
   }, [settings.darkMode]);
+
+  const triggerToast = (msg, type = "success") => {
+    setToastMessage(msg);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const fetchSettings = async () => {
     const res = await fetch(`${API}/settings`, { headers: hdr() });
@@ -323,12 +335,12 @@ export default function SuperadminDashboard() {
   const handleAddUser = async (e) => {
     if (e) e.preventDefault();
     if (!userFormData.name || !userFormData.email || !userFormData.password || !userFormData.phone) {
-      alert("Please fill name, email, password, and phone number.");
+      triggerToast("Please fill name, email, password, and phone number.", "error");
       return;
     }
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
     if (!passwordRegex.test(userFormData.password)) {
-      alert("Password must be at least 6 characters long and include 1 uppercase, 1 lowercase, 1 number, and 1 special character.");
+      triggerToast("Password must be at least 6 characters long and include 1 uppercase, 1 lowercase, 1 number, and 1 special character.", "error");
       return;
     }
     setIsSubmitting(true);
@@ -345,15 +357,15 @@ export default function SuperadminDashboard() {
       }
       const json = await res.json();
       if (json.success) {
-        alert(json.message);
+        triggerToast(json.message || "User created successfully!");
         setShowAddUserModal(false);
         setUserFormData({ name: "", email: "", password: "", role: "admin", phone: "" });
         fetchAll();
       } else {
-        alert("Error: " + json.message);
+        triggerToast("Error: " + json.message, "error");
       }
     } catch (err) {
-      alert("Network Error");
+      triggerToast("Network Error", "error");
     }
     setIsSubmitting(false);
   };
@@ -405,7 +417,7 @@ export default function SuperadminDashboard() {
   };
 
   const handleSaveInvoice = async () => {
-    if (!invoiceFormData.customer.trim()) { alert("Customer Name Required!"); return; }
+    if (!invoiceFormData.customer.trim()) { triggerToast("Customer Name Required!", "error"); return; }
     setIsSubmittingInvoice(true);
     const subtotal = invoiceFormData.items.reduce((s, i) => s + (i.qty * i.price), 0);
     const tax = subtotal * 0.13;
@@ -435,7 +447,7 @@ export default function SuperadminDashboard() {
       if (res.ok) {
         const json = await res.json();
         const createdInvoice = json.data || {};
-        alert("Invoice generated successfully!");
+        triggerToast("Invoice generated successfully!");
         setShowInvoiceForm(false);
         fetchAll();
         setTab("invoices");
@@ -447,9 +459,9 @@ export default function SuperadminDashboard() {
         }
       } else {
         const data = await res.json();
-        alert("Error: " + (data.message || "Failed to save"));
+        triggerToast("Error: " + (data.message || "Failed to save"), "error");
       }
-    } catch (err) { alert("Network Error"); }
+    } catch (err) { triggerToast("Network Error", "error"); }
     finally { setIsSubmittingInvoice(false); }
   };
 
@@ -485,7 +497,7 @@ export default function SuperadminDashboard() {
       if (res.ok) {
         const json = await res.json();
         const createdInvoice = json.data || {};
-        alert("Invoice created successfully!");
+        triggerToast("Invoice created successfully!");
         setShowScannerInvoice(false);
         fetchAll();
         setTab("invoices");
@@ -497,10 +509,10 @@ export default function SuperadminDashboard() {
         }
       } else {
         const data = await res.json();
-        alert("Error: " + (data.message || "Failed to save invoice"));
+        triggerToast("Error: " + (data.message || "Failed to save invoice"), "error");
       }
     } catch (err) {
-      alert("Network Error");
+      triggerToast("Network Error", "error");
     } finally {
       setIsSubmittingInvoice(false);
     }
@@ -516,16 +528,16 @@ export default function SuperadminDashboard() {
         body: JSON.stringify(supplierFormData)
       });
       if (res.ok) {
-        alert("Supplier saved globally!");
+        triggerToast("Supplier saved globally!");
         setShowSupplierForm(false);
         setEditSupplierId(null);
         setSupplierFormData({ name: "", contactPerson: "", email: "", phone: "", address: "", category: "Regular", status: "Active", amountPaid: 0 });
         fetchAll();
       } else {
         const data = await res.json();
-        alert("Error: " + (data.message || "Failed to save supplier"));
+        triggerToast("Error: " + (data.message || "Failed to save supplier"), "error");
       }
-    } catch (err) { alert("Network Error"); }
+    } catch (err) { triggerToast("Network Error", "error"); }
   };
 
   const handleSaveCustomer = async () => {
@@ -538,16 +550,16 @@ export default function SuperadminDashboard() {
         body: JSON.stringify(customerFormData)
       });
       if (res.ok) {
-        alert("Customer profile updated globally!");
+        triggerToast("Customer profile updated globally!");
         setShowCustomerModal(false);
         setEditCustomerId(null);
         setCustomerFormData({ name: "", email: "", phone: "", address: "", status: "active" });
         fetchAll();
       } else {
         const data = await res.json();
-        alert("Error: " + (data.message || "Failed to save customer"));
+        triggerToast("Error: " + (data.message || "Failed to save customer"), "error");
       }
-    } catch (err) { alert("Network Error"); }
+    } catch (err) { triggerToast("Network Error", "error"); }
   };
 
   const initiateEsewaPayment = (invoiceId, subtotal, discount, tax, grandTotal) => {
@@ -609,8 +621,8 @@ export default function SuperadminDashboard() {
         productUrl: window.location.origin,
         paymentPreference: ["KHALTI"],
         eventHandler: {
-          onSuccess(payload) { alert("Payment successful!"); },
-          onError(error) { alert("Payment Error!"); },
+          onSuccess(payload) { triggerToast("Payment successful!"); },
+          onError(error) { triggerToast("Payment Error!", "error"); },
           onClose() { console.log('Khalti widget closed'); }
         }
       };
@@ -726,8 +738,8 @@ export default function SuperadminDashboard() {
   };
 
   const handleSaveOrder = async () => {
-    if (!orderFormData.customer?.trim()) { alert("Customer Name is required!"); return; }
-    if (!orderFormData.product?.trim()) { alert("Product / Description is required!"); return; }
+    if (!orderFormData.customer?.trim()) { triggerToast("Customer Name is required!", "error"); return; }
+    if (!orderFormData.product?.trim()) { triggerToast("Product / Description is required!", "error"); return; }
     try {
       const isEdit = !!orderFormData._id;
       const url = isEdit ? `${API}/orders/${orderFormData._id}` : `${API}/orders`;
@@ -749,22 +761,22 @@ export default function SuperadminDashboard() {
       });
       const json = await res.json();
       if (res.ok) {
-        alert(isEdit ? "Order updated successfully!" : "Order created successfully!");
+        triggerToast(isEdit ? "Order updated successfully!" : "Order created successfully!");
         setShowOrderForm(false);
         setEditOrderId(null);
         setOrderFormData({ sno: "", customer: "", email: "", phone: "", product: "", amount: 0, status: "Pending", date: new Date().toISOString().split('T')[0], quantity: 1 });
         fetchAll();
       } else {
-        alert("Error: " + (json.message || "Failed to save order"));
+        triggerToast("Error: " + (json.message || "Failed to save order"), "error");
       }
     } catch (err) {
-      alert("Network Error: " + err.message);
+      triggerToast("Network Error: " + err.message, "error");
     }
   };
 
   const handleSaveProduct = async () => {
-    if (!productFormData.name?.trim()) { alert("Product Name is required!"); return; }
-    if (productFormData.price <= 0) { alert("Selling Price must be greater than 0!"); return; }
+    if (!productFormData.name?.trim()) { triggerToast("Product Name is required!", "error"); return; }
+    if (productFormData.price <= 0) { triggerToast("Selling Price must be greater than 0!", "error"); return; }
     try {
       const isEdit = !!productFormData._id;
       const url = isEdit ? `${API}/products/${productFormData._id}` : `${API}/products`;
@@ -794,29 +806,29 @@ export default function SuperadminDashboard() {
       });
       const json = await res.json();
       if (res.ok) {
-        alert(isEdit ? "Product updated successfully!" : "Product added successfully!");
+        triggerToast(isEdit ? "Product updated successfully!" : "Product added successfully!");
         setShowProductForm(false);
         setProductFormData({ name: "", sno: "", productId: "", batchNo: "", barcode: "", category: "General", buyingPrice: 0, price: 0, stock: 0, maxStock: 100, expiryDate: "", status: "Active", image: "", supplier: "", supplierName: "" });
         fetchAll();
       } else {
-        alert("Error: " + (json.message || "Failed to save product"));
+        triggerToast("Error: " + (json.message || "Failed to save product"), "error");
       }
     } catch (err) {
-      alert("Network Error: " + err.message);
+      triggerToast("Network Error: " + err.message, "error");
     }
   };
 
   const handleSaveExchange = async () => {
     if (!exchangeFormData.returnedProductId) {
-      alert("Please select a Returned Product.");
+      triggerToast("Please select a Returned Product.", "error");
       return;
     }
     if (!exchangeFormData.reason) {
-      alert("Please select a Reason for Exchange.");
+      triggerToast("Please select a Reason for Exchange.", "error");
       return;
     }
     if (!exchangeFormData.billNumber) {
-      alert("Bill number is required.");
+      triggerToast("Bill number is required.", "error");
       return;
     }
 
@@ -837,15 +849,15 @@ export default function SuperadminDashboard() {
         body: JSON.stringify(dataToSend)
       });
       if (res.ok) {
-        alert("Exchange logged successfully!");
+        triggerToast("Exchange logged successfully!");
         setShowExchangeForm(false);
         setExchangeFormData({ type: "customer", customerName: "", supplierName: "", returnedProductId: "", newProductId: "", quantity: 1, reason: "", restocked: true, amountToPay: 0, amountToRefund: 0, purchaseDate: "", batchNo: "", billNumber: "", membershipId: "" });
         fetchAll();
       } else {
         const data = await res.json();
-        alert("Error: " + (data.message || "Failed to save exchange"));
+        triggerToast("Error: " + (data.message || "Failed to save exchange"), "error");
       }
-    } catch (err) { alert("Network Error: " + err.message); }
+    } catch (err) { triggerToast("Network Error: " + err.message, "error"); }
   };
 
   const handleExportProducts = () => {
@@ -2125,7 +2137,7 @@ export default function SuperadminDashboard() {
           setShowExchangeForm={() => setShowExchangeForm(true)}
           setExchangeFormData={setExchangeFormData}
           handleDeleteExchange={(id) => handleDelete('exchanges', id)}
-          triggerToast={(msg) => alert(msg)}
+          triggerToast={triggerToast}
           currentPage={pages.exchanges}
           onPageChange={(p) => setPages({ ...pages, exchanges: p })}
         />
@@ -2612,7 +2624,7 @@ export default function SuperadminDashboard() {
               ))}
             </div>
             <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-end">
-              <button onClick={() => { localStorage.setItem('appSettings', JSON.stringify(settings)); alert('Settings saved successfully!'); }} className="px-8 py-4 bg-[#0B1120] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-gray-900/20">Commit Changes</button>
+              <button onClick={() => { localStorage.setItem('appSettings', JSON.stringify(settings)); triggerToast('Settings saved successfully!'); }} className="px-8 py-4 bg-[#0B1120] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-gray-900/20">Commit Changes</button>
             </div>
           </div>
 
@@ -2631,7 +2643,7 @@ export default function SuperadminDashboard() {
                   const res = await fetch(`${API}/auth/reset-data`, { method: 'DELETE', headers: hdr() });
                   const data = await res.json();
                   if (data.success) {
-                    alert('Global data purge complete.');
+                    triggerToast('Global data purge complete.');
                     fetchAll();
                   }
                 } catch (e) { }
@@ -2647,7 +2659,7 @@ export default function SuperadminDashboard() {
           setSettings={setSettings} 
           API={API} 
           hdr={hdr} 
-          triggerToast={(msg) => alert(msg)} 
+          triggerToast={triggerToast} 
         />
       );
 
@@ -2680,14 +2692,14 @@ export default function SuperadminDashboard() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                  alert("Profile updated successfully!");
+                  triggerToast("Profile updated successfully!");
                   const updatedUser = { ...getUser(), ...profile, avatar: profile.photo };
                   localStorage.setItem('user', JSON.stringify(updatedUser));
                   window.location.reload();
                 } else {
-                  alert(data.message || 'Failed to update profile');
+                  triggerToast(data.message || 'Failed to update profile', 'error');
                 }
-              } catch(err) { console.error(err); alert("Error updating profile"); }
+              } catch(err) { console.error(err); triggerToast("Error updating profile", "error"); }
             }}
           />
         </div>
@@ -2722,6 +2734,25 @@ export default function SuperadminDashboard() {
               setShowScannerInvoice={setShowScannerInvoice}
               setSidebarOpen={setSidebarOpen}
             />
+
+            {showToast && (
+              <div className="fixed top-4 right-4 z-[200] animate-slide-in">
+                <div className="bg-white rounded shadow-[0_3px_10px_rgb(0,0,0,0.2)] flex flex-col w-[350px] max-w-sm overflow-hidden border border-gray-100">
+                  <div className="flex items-start gap-4 p-4">
+                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${toastType === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                      <span className="text-white text-sm font-bold">{toastType === 'error' ? '!' : '✓'}</span>
+                    </div>
+                    <div className="flex-1 text-gray-500 text-[15px] font-normal leading-snug">
+                      {toastMessage}
+                    </div>
+                  </div>
+                  <div className={`h-1 w-full ${toastType === 'error' ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                    <div className={`h-full ${toastType === 'error' ? 'bg-red-500' : 'bg-emerald-500'} animate-shrink origin-left`} style={{ animationDuration: '3000ms' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className={`${settings.darkMode ? 'bg-[#0B1120]' : 'bg-gray-50'} transition-colors duration-300`}>
               {renderTab()}
             </div>
@@ -2732,7 +2763,7 @@ export default function SuperadminDashboard() {
         <CSVImportModal
           onClose={() => setShowCSVModal(false)}
           onImport={(importedData) => {
-            alert(`${importedData.length} products processed. In a real app, we would send this to the backend.`);
+            triggerToast(`${importedData.length} products imported successfully!`);
             setShowCSVModal(false);
             fetchAll();
           }}

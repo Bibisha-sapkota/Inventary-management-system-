@@ -12,42 +12,26 @@ export default function Toast({ message, type = "success", onClose, duration = 3
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const styles = {
-    success: {
-      bg: "bg-emerald-500",
-      icon: "✓",
-    },
-    error: {
-      bg: "bg-red-500",
-      icon: "✕",
-    },
-    warning: {
-      bg: "bg-yellow-500",
-      icon: "⚠",
-    },
-    info: {
-      bg: "bg-green-500",
-      icon: "ℹ",
-    },
-  };
-
-  const style = styles[type] || styles.success;
+  const isError = type === "error" || type === "warning";
+  const iconColor = isError ? "bg-red-500" : "bg-emerald-500";
+  const iconText = isError ? "!" : "✓";
+  const progressBg = isError ? "bg-red-100" : "bg-emerald-100";
+  const progressFill = isError ? "bg-red-500" : "bg-emerald-500";
 
   return (
     <div className="fixed top-4 right-4 z-[100] animate-slide-in">
-      <div className={`${style.bg} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px]`}>
-        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-lg font-bold">
-          {style.icon}
+      <div className="bg-white rounded shadow-[0_3px_10px_rgb(0,0,0,0.2)] flex flex-col w-[350px] max-w-sm overflow-hidden border border-gray-100">
+        <div className="flex items-start gap-4 p-4">
+          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${iconColor}`}>
+            <span className="text-white text-sm font-bold">{iconText}</span>
+          </div>
+          <div className="flex-1 text-gray-500 text-[15px] font-normal leading-snug">
+            {message}
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="font-medium">{message}</p>
+        <div className={`h-1 w-full ${progressBg}`}>
+          <div className={`h-full ${progressFill} animate-shrink origin-left`} style={{ animationDuration: `${duration}ms` }}></div>
         </div>
-        <button
-          onClick={onClose}
-          className="text-white/80 hover:text-white transition-colors"
-        >
-          <Icons.X className="w-5 h-5" />
-        </button>
       </div>
     </div>
   );

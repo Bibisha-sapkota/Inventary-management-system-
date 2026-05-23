@@ -574,14 +574,18 @@ const AdminDashboard = ({ initialTab }) => {
         />
 
         {showToast && (
-          <div className="fixed top-10 right-10 z-[100] animate-bounce">
-            <div className={`${toastType === 'error' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-emerald-500 shadow-emerald-500/30'} text-white px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 border-4 border-white/20 backdrop-blur-md`}>
-              <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                {toastType === 'error' ? <AlertCircle size={28} /> : <CheckCircle size={28} />}
+          <div className="fixed top-4 right-4 z-[100] animate-slide-in">
+            <div className="bg-white rounded shadow-[0_3px_10px_rgb(0,0,0,0.2)] flex flex-col w-[350px] max-w-sm overflow-hidden border border-gray-100">
+              <div className="flex items-start gap-4 p-4">
+                <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${toastType === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                  <span className="text-white text-sm font-bold">{toastType === 'error' ? '!' : '✓'}</span>
+                </div>
+                <div className="flex-1 text-gray-500 text-[15px] font-normal leading-snug">
+                  {toastMessage}
+                </div>
               </div>
-              <div>
-                <h4 className="font-black text-[10px] uppercase tracking-[0.2em] opacity-70 mb-1">{toastType === 'error' ? 'Attention Needed' : 'Action Confirmed'}</h4>
-                <p className="font-black text-lg leading-tight">{toastMessage}</p>
+              <div className={`h-1 w-full ${toastType === 'error' ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                <div className={`h-full ${toastType === 'error' ? 'bg-red-500' : 'bg-emerald-500'} animate-shrink origin-left`} style={{ animationDuration: '3000ms' }}></div>
               </div>
             </div>
           </div>
